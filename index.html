@@ -229,9 +229,40 @@ textarea { width: 100%; min-height: 60px; resize: vertical; }
           <label>Competitie</label>
           <select id="match-comp"></select>
         </div>
-        <div class="form-row">
+        <div class="form-row" id="match-day-row">
           <label>Speeldag</label>
           <input type="number" id="match-day" min="1" value="1" style="width:80px">
+        </div>
+        <div class="form-row" id="match-round-row" style="display:none">
+          <label>Ronde</label>
+          <select id="match-round">
+            <option>Groepsfase speeldag 1</option>
+            <option>Groepsfase speeldag 2</option>
+            <option>Groepsfase speeldag 3</option>
+            <option>Groepsfase speeldag 4</option>
+            <option>Groepsfase speeldag 5</option>
+            <option>Groepsfase speeldag 6</option>
+            <option>Tussenronde heen</option>
+            <option>Tussenronde terug</option>
+            <option>Achtste finale heen</option>
+            <option>Achtste finale terug</option>
+            <option>Kwartfinale heen</option>
+            <option>Kwartfinale terug</option>
+            <option>Halve finale heen</option>
+            <option>Halve finale terug</option>
+            <option>Finale</option>
+          </select>
+        </div>
+        <div class="form-row" id="match-cup-round-row" style="display:none">
+          <label>Ronde</label>
+          <select id="match-cup-round">
+            <option>Eerste ronde</option>
+            <option>Tweede ronde</option>
+            <option>Achtste finale</option>
+            <option>Kwartfinale</option>
+            <option>Halve finale</option>
+            <option>Finale</option>
+          </select>
         </div>
         <div class="form-row">
           <label>Thuis</label>
@@ -723,11 +754,39 @@ function populatePlayers(){if(!career)return;['prog-player','chart-player'].forE
 function nextSeasonName(current){const m=current.match(/(\d{2})\/(\d{2})/);if(m){const a=parseInt(m[2]),b=a+1;return`${String(a).padStart(2,'0')}/${String(b%100).padStart(2,'0')}`;}return null;}
 function addSeason(){if(!career||isViewingFriend)return;const last=career.seasons[career.seasons.length-1];const next=nextSeasonName(last);const name=next||prompt('Seizoen naam (bijv. 25/26):');if(name&&!career.seasons.includes(name)){career.seasons.push(name);save();populateSeasons();document.getElementById('match-season').value=name;document.getElementById('match-day').value=1;}}
 
-function addMatch(){if(!career||isViewingFriend)return;const m={season:document.getElementById('match-season').value,comp:document.getElementById('match-comp').value,day:parseInt(document.getElementById('match-day').value)||1,home:document.getElementById('match-home').value,away:document.getElementById('match-away').value,homeScore:parseInt(document.getElementById('score-home').value)||0,awayScore:parseInt(document.getElementById('score-away').value)||0,note:document.getElementById('match-note').value.trim(),id:Date.now()};if(m.home===m.away)return alert('Thuis en uit mogen niet hetzelfde zijn');career.matches.unshift(m);save();document.getElementById('match-day').value=parseInt(document.getElementById('match-day').value)+1;document.getElementById('match-note').value='';renderMatches();}
+const EURO_COMPS = ['Champions League','Europa League','Conference League'];
+const CUP_COMPS = ['KNVB Beker','FA Cup','EFL Cup','DFB-Pokal','Coupe de France','Copa del Rey','Coppa Italia'];
+
+function getCompType(comp) {
+  if (EURO_COMPS.includes(comp)) return 'euro';
+  if (CUP_COMPS.includes(comp)) return 'cup';
+  return 'league';
+}
+
+function updateMatchFields() {
+  const comp = document.getElementById('match-comp').value;
+  const type = getCompType(comp);
+  document.getElementById('match-day-row').style.display = type==='league'?'flex':'none';
+  document.getElementById('match-round-row').style.display = type==='euro'?'flex':'none';
+  document.getElementById('match-cup-round-row').style.display = type==='cup'?'flex':'none';
+}
+document.getElementById('match-comp').addEventListener('change', updateMatchFields);
+
+function addMatch(){if(!career||isViewingFriend)return;
+  const comp=document.getElementById('match-comp').value;
+  const type=getCompType(comp);
+  let day=0, round='';
+  if(type==='league'){day=parseInt(document.getElementById('match-day').value)||1;}
+  else if(type==='euro'){round=document.getElementById('match-round').value;}
+  else{round=document.getElementById('match-cup-round').value;}
+  const m={season:document.getElementById('match-season').value,comp,day,round,home:document.getElementById('match-home').value,away:document.getElementById('match-away').value,homeScore:parseInt(document.getElementById('score-home').value)||0,awayScore:parseInt(document.getElementById('score-away').value)||0,note:document.getElementById('match-note').value.trim(),id:Date.now()};
+  if(m.home===m.away)return alert('Thuis en uit mogen niet hetzelfde zijn');career.matches.unshift(m);save();
+  if(type==='league')document.getElementById('match-day').value=parseInt(document.getElementById('match-day').value)+1;
+  document.getElementById('match-note').value='';renderMatches();}
 function deleteMatch(id){if(!career||isViewingFriend)return;career.matches=career.matches.filter(m=>m.id!==id);save();renderMatches();}
 function toggleNote(id){const el=document.getElementById('note-'+id);if(el)el.classList.toggle('show');}
 
-function renderMatches(){const el=document.getElementById('matches-list');if(!career){el.innerHTML='<div class="no-data">Maak eerst een career mode aan</div>';return;}const fs=document.getElementById('filter-season').value;const fc=document.getElementById('filter-comp').value;let matches=career.matches;if(fs)matches=matches.filter(m=>m.season===fs);if(fc)matches=matches.filter(m=>m.comp===fc);if(!matches.length){el.innerHTML='<div class="no-data">Nog geen wedstrijden</div>';return;}el.innerHTML=matches.map(m=>{const isMyHome=m.home===career.team;const isMyAway=m.away===career.team;const myGoals=isMyHome?m.homeScore:m.awayScore;const theirGoals=isMyHome?m.awayScore:m.homeScore;const resultColor=(isMyHome||isMyAway)?(myGoals>theirGoals?'#4CAF50':myGoals<theirGoals?'#f44336':'#FF9800'):'#fff';return`<div class="match-card" onclick="toggleNote(${m.id})"><div class="match-top"><div class="match-teams"><div class="match-team">${teamLogo(m.home)}<span>${m.home}</span></div><div class="match-score" style="color:${resultColor}">${m.homeScore} - ${m.awayScore}</div><div class="match-team away">${teamLogo(m.away)}<span>${m.away}</span></div></div><div class="match-meta"><div class="match-comp">${m.comp}</div><div>SD ${m.day} | ${m.season}</div></div></div>${m.note?`<div class="match-note" id="note-${m.id}"><i class="fa-solid fa-comment" style="margin-right:6px"></i>${m.note}</div>`:''}<div class="match-expand"><div class="note-hint">${m.note?'<i class="fa-solid fa-comment"></i> Tik voor notitie':''}</div>${isViewingFriend?'':`<button class="btn btn-danger btn-sm" onclick="event.stopPropagation();deleteMatch(${m.id})"><i class="fa-solid fa-trash"></i></button>`}</div></div>`;}).join('');}
+function renderMatches(){const el=document.getElementById('matches-list');if(!career){el.innerHTML='<div class="no-data">Maak eerst een career mode aan</div>';return;}const fs=document.getElementById('filter-season').value;const fc=document.getElementById('filter-comp').value;let matches=career.matches;if(fs)matches=matches.filter(m=>m.season===fs);if(fc)matches=matches.filter(m=>m.comp===fc);if(!matches.length){el.innerHTML='<div class="no-data">Nog geen wedstrijden</div>';return;}el.innerHTML=matches.map(m=>{const isMyHome=m.home===career.team;const isMyAway=m.away===career.team;const myGoals=isMyHome?m.homeScore:m.awayScore;const theirGoals=isMyHome?m.awayScore:m.homeScore;const resultColor=(isMyHome||isMyAway)?(myGoals>theirGoals?'#4CAF50':myGoals<theirGoals?'#f44336':'#FF9800'):'#fff';return`<div class="match-card" onclick="toggleNote(${m.id})"><div class="match-top"><div class="match-teams"><div class="match-team">${teamLogo(m.home)}<span>${m.home}</span></div><div class="match-score" style="color:${resultColor}">${m.homeScore} - ${m.awayScore}</div><div class="match-team away">${teamLogo(m.away)}<span>${m.away}</span></div></div><div class="match-meta"><div class="match-comp">${m.comp}</div><div>${m.round||('SD '+m.day)} | ${m.season}</div></div></div>${m.note?`<div class="match-note" id="note-${m.id}"><i class="fa-solid fa-comment" style="margin-right:6px"></i>${m.note}</div>`:''}<div class="match-expand"><div class="note-hint">${m.note?'<i class="fa-solid fa-comment"></i> Tik voor notitie':''}</div>${isViewingFriend?'':`<button class="btn btn-danger btn-sm" onclick="event.stopPropagation();deleteMatch(${m.id})"><i class="fa-solid fa-trash"></i></button>`}</div></div>`;}).join('');}
 
 function saveStanding(){if(!career||isViewingFriend)return;const season=document.getElementById('standing-season').value;if(!season)return;const league=getLeague();const st={};league.trophies.forEach(t=>{st[t.id]=document.getElementById('pos-'+t.id)?.value||'';});career.standings[season]=st;const next=nextSeasonName(season);if(next&&!career.seasons.includes(next)){career.seasons.push(next);populateSeasons();document.getElementById('match-season').value=next;document.getElementById('match-day').value=1;}save();renderStandings();alert('Opgeslagen!');}
 function posClass(val){if(val==='Winnaar'||val==='1')return'gold';if(val==='Finalist'||val==='2')return'silver';if(val==='Halve finale'||val==='3')return'bronze';return'';}
