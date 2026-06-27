@@ -169,6 +169,36 @@ textarea { width: 100%; min-height: 60px; resize: vertical; }
 .lb-name { font-weight: 600; }
 .lb-you { color: #00d4aa; }
 .lb-category { font-size: 15px; font-weight: 600; color: #0088ff; margin: 20px 0 10px; }
+
+.badge { background: #111827; border-radius: 12px; padding: 16px; border: 1px solid #1e2a3a; margin-bottom: 10px; display: flex; align-items: center; gap: 14px; }
+.badge.unlocked { border-color: #ffd700; }
+.badge.locked { opacity: 0.4; }
+.badge-icon { width: 48px; height: 48px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 22px; flex-shrink: 0; }
+.badge-icon.gold { background: linear-gradient(135deg, #ffd700, #ff8c00); }
+.badge-icon.silver { background: linear-gradient(135deg, #c0c0c0, #888); }
+.badge-icon.bronze { background: linear-gradient(135deg, #cd7f32, #8b4513); }
+.badge-icon.locked { background: #1e2a3a; }
+.badge-info h4 { font-size: 14px; font-weight: 600; margin-bottom: 2px; }
+.badge-info p { font-size: 12px; color: #888; }
+
+.review-card { background: #111827; border-radius: 12px; padding: 16px; border: 1px solid #1e2a3a; margin-bottom: 12px; }
+.review-card h4 { font-size: 13px; color: #0088ff; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.5px; }
+.review-highlight { display: flex; align-items: center; gap: 10px; padding: 8px 0; }
+.review-highlight .rh-label { font-size: 12px; color: #888; min-width: 120px; }
+.review-highlight .rh-value { font-size: 14px; font-weight: 600; }
+
+.h2h-grid { display: grid; grid-template-columns: 1fr auto 1fr; gap: 0; margin-bottom: 16px; }
+.h2h-player { text-align: center; padding: 16px; background: #111827; border: 1px solid #1e2a3a; }
+.h2h-player:first-child { border-radius: 12px 0 0 12px; }
+.h2h-player:last-child { border-radius: 0 12px 12px 0; }
+.h2h-vs { display: flex; align-items: center; justify-content: center; padding: 16px 12px; background: #111827; border-top: 1px solid #1e2a3a; border-bottom: 1px solid #1e2a3a; font-size: 13px; color: #555; }
+.h2h-stat { display: grid; grid-template-columns: 1fr auto 1fr; gap: 0; margin-bottom: 4px; background: #111827; border: 1px solid #1e2a3a; border-radius: 8px; overflow: hidden; }
+.h2h-val { padding: 10px 16px; font-size: 16px; font-weight: 700; }
+.h2h-val:first-child { text-align: center; }
+.h2h-val:last-child { text-align: center; }
+.h2h-label { display: flex; align-items: center; justify-content: center; padding: 10px 8px; font-size: 11px; color: #888; text-transform: uppercase; border-left: 1px solid #1e2a3a; border-right: 1px solid #1e2a3a; }
+.h2h-winner { color: #4CAF50; }
+.h2h-loser { color: #f44336; }
 </style>
 </head>
 <body>
@@ -223,6 +253,9 @@ textarea { width: 100%; min-height: 60px; resize: vertical; }
       <div class="tab" data-tab="squad"><i class="fa-solid fa-users"></i> Opstelling</div>
       <div class="tab" data-tab="progress"><i class="fa-solid fa-chart-line"></i> Progressie</div>
       <div class="tab" data-tab="transfers"><i class="fa-solid fa-right-left"></i> Transfers</div>
+      <div class="tab" data-tab="achievements"><i class="fa-solid fa-medal"></i> Badges</div>
+      <div class="tab" data-tab="season-review"><i class="fa-solid fa-book"></i> Seizoen</div>
+      <div class="tab" data-tab="h2h"><i class="fa-solid fa-scale-balanced"></i> H2H</div>
       <div class="tab" data-tab="teams"><i class="fa-solid fa-shield-halved"></i> Teams</div>
     </div>
 
@@ -271,6 +304,8 @@ textarea { width: 100%; min-height: 60px; resize: vertical; }
             <option>Groepsfase speeldag 4</option>
             <option>Groepsfase speeldag 5</option>
             <option>Groepsfase speeldag 6</option>
+            <option>Groepsfase speeldag 7</option>
+            <option>Groepsfase speeldag 8</option>
             <option>Tussenronde heen</option>
             <option>Tussenronde terug</option>
             <option>Achtste finale heen</option>
@@ -415,6 +450,45 @@ textarea { width: 100%; min-height: 60px; resize: vertical; }
       <div id="tf-list-in"></div>
       <h3 style="margin:16px 0 12px;font-size:16px">Uitgaand</h3>
       <div id="tf-list-out"></div>
+    </div>
+
+    <!-- Achievements -->
+    <div class="panel" id="panel-achievements">
+      <div class="card">
+        <h3><i class="fa-solid fa-medal"></i> Achievements</h3>
+        <p style="font-size:13px;color:#888">Verdien badges door te spelen. Per career mode.</p>
+      </div>
+      <div id="achievements-list"></div>
+    </div>
+
+    <!-- Season Review -->
+    <div class="panel" id="panel-season-review">
+      <div class="card">
+        <h3><i class="fa-solid fa-book"></i> Seizoensamenvatting</h3>
+        <div class="form-row">
+          <label>Seizoen</label>
+          <select id="review-season" onchange="renderSeasonReview()"></select>
+        </div>
+      </div>
+      <div id="season-review-content"></div>
+    </div>
+
+    <!-- Head to Head -->
+    <div class="panel" id="panel-h2h">
+      <div class="card">
+        <h3><i class="fa-solid fa-scale-balanced"></i> Head-to-Head</h3>
+        <p style="font-size:13px;color:#888;margin-bottom:12px">Vergelijk twee spelers</p>
+        <div class="form-row">
+          <label>Speler 1</label>
+          <select id="h2h-player1"><option value="">Laden...</option></select>
+        </div>
+        <div class="form-row">
+          <label>Speler 2</label>
+          <select id="h2h-player2"><option value="">Laden...</option></select>
+        </div>
+        <button class="btn btn-primary btn-sm" onclick="renderH2H()"><i class="fa-solid fa-scale-balanced"></i> Vergelijken</button>
+      </div>
+      <div id="h2h-content"></div>
     </div>
 
     <!-- Teams -->
@@ -820,7 +894,7 @@ function editMatch(id){
   const m=career.matches.find(x=>x.id===id);
   if(!m)return;
   const type=getCompType(m.comp);
-  const euroOpts=['Groepsfase speeldag 1','Groepsfase speeldag 2','Groepsfase speeldag 3','Groepsfase speeldag 4','Groepsfase speeldag 5','Groepsfase speeldag 6','Tussenronde heen','Tussenronde terug','Achtste finale heen','Achtste finale terug','Kwartfinale heen','Kwartfinale terug','Halve finale heen','Halve finale terug','Finale'];
+  const euroOpts=['Groepsfase speeldag 1','Groepsfase speeldag 2','Groepsfase speeldag 3','Groepsfase speeldag 4','Groepsfase speeldag 5','Groepsfase speeldag 6','Groepsfase speeldag 7','Groepsfase speeldag 8','Tussenronde heen','Tussenronde terug','Achtste finale heen','Achtste finale terug','Kwartfinale heen','Kwartfinale terug','Halve finale heen','Halve finale terug','Finale'];
   const cupOpts=['Eerste ronde','Tweede ronde','Achtste finale','Kwartfinale','Halve finale','Finale'];
 
   let roundHtml='';
@@ -915,7 +989,7 @@ function deleteTransfer(id){if(!career||isViewingFriend)return;career.transfers=
 function renderTransfers(){if(!career){document.getElementById('tf-list-in').innerHTML='<div class="no-data">Maak eerst een career mode aan</div>';document.getElementById('tf-list-out').innerHTML='';document.getElementById('tf-stats').innerHTML='';return;}if(!career.transfers)career.transfers=[];let transfers=career.transfers;const fs=document.getElementById('tf-filter-season').value;const ft=document.getElementById('tf-filter-type').value;if(fs)transfers=transfers.filter(t=>t.season===fs);if(ft)transfers=transfers.filter(t=>t.type===ft);const incoming=transfers.filter(t=>t.type==='buy'||t.type==='loan-in'||t.type==='free');const outgoing=transfers.filter(t=>t.type==='sell'||t.type==='loan-out');const spent=transfers.filter(t=>t.type==='buy'||t.type==='free').reduce((s,t)=>s+t.feeNum,0);const earned=transfers.filter(t=>t.type==='sell').reduce((s,t)=>s+t.feeNum,0);document.getElementById('tf-stats').innerHTML=`<div class="stat-card"><div class="value">${transfers.length}</div><div class="label">Transfers</div></div><div class="stat-card"><div class="value" style="color:#f44336">${formatFee(spent)}</div><div class="label">Uitgegeven</div></div><div class="stat-card"><div class="value" style="color:#4CAF50">${formatFee(earned)}</div><div class="label">Ontvangen</div></div><div class="stat-card"><div class="value" style="color:${earned>=spent?'#4CAF50':'#f44336'}">${earned>=spent?'+':''}${formatFee(Math.abs(earned-spent))}</div><div class="label">Saldo</div></div>`;function tfCard(t){const dir=(t.type==='sell'||t.type==='loan-out')?'Naar':'Van';return`<div class="match-card" style="margin-bottom:6px;cursor:default"><div style="display:flex;align-items:center;justify-content:space-between"><div style="display:flex;align-items:center;gap:12px"><i class="fa-solid ${TF_ICONS[t.type]}" style="color:${TF_COLORS[t.type]};font-size:18px;width:24px;text-align:center"></i><div><div style="font-weight:500">${t.player} ${t.position?'<span style="color:#0088ff;font-size:12px;font-weight:400">'+t.position+'</span>':''} ${t.rating?'<span style="color:#ffd700;font-size:12px;font-weight:400">'+t.rating+'</span>':''}</div><div style="font-size:12px;color:#888">${t.club?dir+' '+t.club:''}</div></div></div><div style="text-align:right;display:flex;align-items:center;gap:12px"><div><div style="font-weight:600;color:${TF_COLORS[t.type]}">${t.fee?formatFee(t.feeNum):'Gratis'}</div><div style="font-size:11px;color:#666">${t.season} | ${TF_LABELS[t.type]}</div></div>${isViewingFriend?'':`<button class="btn btn-danger btn-sm" onclick="deleteTransfer(${t.id})"><i class="fa-solid fa-trash"></i></button>`}</div></div></div>`;}document.getElementById('tf-list-in').innerHTML=incoming.length?incoming.map(tfCard).join(''):'<div class="no-data" style="padding:20px">Geen inkomende transfers</div>';document.getElementById('tf-list-out').innerHTML=outgoing.length?outgoing.map(tfCard).join(''):'<div class="no-data" style="padding:20px">Geen uitgaande transfers</div>';}
 
 // Tabs
-document.querySelectorAll('.tab').forEach(tab=>{tab.addEventListener('click',()=>{document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));tab.classList.add('active');document.getElementById('panel-'+tab.dataset.tab).classList.add('active');if(tab.dataset.tab==='stats')renderStats();if(tab.dataset.tab==='standings'){populateStandingInputs();renderStandings();}if(tab.dataset.tab==='teams')renderTeams();if(tab.dataset.tab==='squad')renderFormation();if(tab.dataset.tab==='progress'){populatePlayers();renderRatingsOverview();}if(tab.dataset.tab==='transfers')renderTransfers();if(tab.dataset.tab==='friends')loadFriends();if(tab.dataset.tab==='leaderboard')loadLeaderboard();});});
+document.querySelectorAll('.tab').forEach(tab=>{tab.addEventListener('click',()=>{document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));tab.classList.add('active');document.getElementById('panel-'+tab.dataset.tab).classList.add('active');if(tab.dataset.tab==='stats')renderStats();if(tab.dataset.tab==='standings'){populateStandingInputs();renderStandings();}if(tab.dataset.tab==='teams')renderTeams();if(tab.dataset.tab==='squad')renderFormation();if(tab.dataset.tab==='progress'){populatePlayers();renderRatingsOverview();}if(tab.dataset.tab==='transfers')renderTransfers();if(tab.dataset.tab==='friends')loadFriends();if(tab.dataset.tab==='leaderboard')loadLeaderboard();if(tab.dataset.tab==='achievements')renderAchievements();if(tab.dataset.tab==='season-review'){populateReviewSeasons();renderSeasonReview();}if(tab.dataset.tab==='h2h')loadH2HPlayers();});});
 
 function refreshAll(){populateSeasons();populateComps();populateTeamSelects();populateStandingInputs();populatePlayers();renderMatches();renderCareerBar();renderStats();renderStandings();renderFormation();renderRatingsOverview();renderTransfers();}
 
@@ -925,6 +999,240 @@ document.getElementById('login-name').addEventListener('keypress',function(e){if
 showExistingAccounts();
 
 function showImportModal(){showModal('import-modal');}
+
+// ============================================
+// ACHIEVEMENTS
+// ============================================
+const ACHIEVEMENTS = [
+  {id:'first_match',icon:'fa-futbol',tier:'bronze',name:'Eerste wedstrijd',desc:'Speel je eerste wedstrijd',check:s=>s.matches>=1},
+  {id:'10_matches',icon:'fa-futbol',tier:'bronze',name:'Getting Started',desc:'Speel 10 wedstrijden',check:s=>s.matches>=10},
+  {id:'50_matches',icon:'fa-futbol',tier:'silver',name:'Doorgewinterd',desc:'Speel 50 wedstrijden',check:s=>s.matches>=50},
+  {id:'100_matches',icon:'fa-futbol',tier:'gold',name:'Veteraan',desc:'Speel 100 wedstrijden',check:s=>s.matches>=100},
+  {id:'first_win',icon:'fa-trophy',tier:'bronze',name:'Eerste overwinning',desc:'Win je eerste wedstrijd',check:s=>s.wins>=1},
+  {id:'10_wins',icon:'fa-trophy',tier:'silver',name:'Winnaar',desc:'Win 10 wedstrijden',check:s=>s.wins>=10},
+  {id:'50_wins',icon:'fa-trophy',tier:'gold',name:'Machine',desc:'Win 50 wedstrijden',check:s=>s.wins>=50},
+  {id:'win_streak_3',icon:'fa-fire',tier:'bronze',name:'On Fire',desc:'Win 3 wedstrijden op rij',check:s=>s.bestStreak>=3},
+  {id:'win_streak_5',icon:'fa-fire',tier:'silver',name:'Unstoppable',desc:'Win 5 wedstrijden op rij',check:s=>s.bestStreak>=5},
+  {id:'win_streak_10',icon:'fa-fire',tier:'gold',name:'Onoverwinnelijk',desc:'Win 10 wedstrijden op rij',check:s=>s.bestStreak>=10},
+  {id:'clean_sheet',icon:'fa-shield-halved',tier:'bronze',name:'Clean Sheet',desc:'Win zonder tegendoelpunt',check:s=>s.cleanSheets>=1},
+  {id:'5_clean',icon:'fa-shield-halved',tier:'silver',name:'Muur',desc:'5 clean sheets',check:s=>s.cleanSheets>=5},
+  {id:'10_clean',icon:'fa-shield-halved',tier:'gold',name:'Onklopbaar',desc:'10 clean sheets',check:s=>s.cleanSheets>=10},
+  {id:'goals_50',icon:'fa-bullseye',tier:'bronze',name:'Scherp',desc:'Scoor 50 goals totaal',check:s=>s.goalsFor>=50},
+  {id:'goals_100',icon:'fa-bullseye',tier:'silver',name:'Doelpuntenmachine',desc:'Scoor 100 goals totaal',check:s=>s.goalsFor>=100},
+  {id:'goals_500',icon:'fa-bullseye',tier:'gold',name:'Legende',desc:'Scoor 500 goals totaal',check:s=>s.goalsFor>=500},
+  {id:'big_win',icon:'fa-explosion',tier:'bronze',name:'Afslachting',desc:'Win een wedstrijd met 5+ goals verschil',check:s=>s.biggestWin>=5},
+  {id:'comeback',icon:'fa-rotate-left',tier:'silver',name:'Comeback King',desc:'Win een wedstrijd na achterstand (notitie met "comeback")',check:s=>s.comebacks>=1},
+  {id:'trophy_1',icon:'fa-medal',tier:'bronze',name:'Eerste prijs',desc:'Win je eerste trofee',check:s=>s.trophies>=1},
+  {id:'trophy_3',icon:'fa-medal',tier:'silver',name:'Prijzenkast',desc:'Win 3 trofeeën',check:s=>s.trophies>=3},
+  {id:'trophy_10',icon:'fa-medal',tier:'gold',name:'Dominantie',desc:'Win 10 trofeeën',check:s=>s.trophies>=10},
+  {id:'champion',icon:'fa-crown',tier:'gold',name:'Kampioen!',desc:'Word kampioen (#1 in de competitie)',check:s=>s.champion},
+  {id:'cl_winner',icon:'fa-star',tier:'gold',name:'Kings of Europe',desc:'Win de Champions League',check:s=>s.clWinner},
+  {id:'treble',icon:'fa-gem',tier:'gold',name:'The Treble',desc:'Win competitie + beker + CL in 1 seizoen',check:s=>s.treble},
+  {id:'unbeaten',icon:'fa-infinity',tier:'gold',name:'Invincibles',desc:'Ga een heel seizoen ongeslagen (min 10 potjes)',check:s=>s.unbeatenSeason},
+  {id:'transfer_10',icon:'fa-right-left',tier:'bronze',name:'Transfermarkt',desc:'Doe 10 transfers',check:s=>s.transfers>=10},
+  {id:'squad_full',icon:'fa-users',tier:'bronze',name:'Volledige selectie',desc:'Heb 11+ spelers in je selectie',check:s=>s.squadSize>=11},
+  {id:'multi_career',icon:'fa-layer-group',tier:'silver',name:'Multi-manager',desc:'Start 3 career modes',check:s=>s.careerCount>=3},
+];
+
+function calcCareerStats(){
+  if(!career)return null;
+  const myMatches=(career.matches||[]).filter(m=>m.home===career.team||m.away===career.team);
+  let wins=0,draws=0,losses=0,gf=0,ga=0,cleanSheets=0,biggestWin=0,streak=0,bestStreak=0,comebacks=0;
+  myMatches.forEach(m=>{
+    const isHome=m.home===career.team;
+    const my=isHome?m.homeScore:m.awayScore,their=isHome?m.awayScore:m.homeScore;
+    gf+=my;ga+=their;
+    if(their===0&&my>0)cleanSheets++;
+    const diff=my-their;
+    if(diff>biggestWin)biggestWin=diff;
+    if(my>their){wins++;streak++;if(streak>bestStreak)bestStreak=streak;}else{streak=0;if(my<their)losses++;else draws++;}
+    if(m.note&&m.note.toLowerCase().includes('comeback')&&my>their)comebacks++;
+  });
+  let trophies=0,champion=false,clWinner=false,treble=false,unbeatenSeason=false;
+  if(career.standings){
+    Object.keys(career.standings).forEach(season=>{
+      const st=career.standings[season];
+      let seasonChamp=false,seasonCup=false,seasonCL=false;
+      Object.keys(st).forEach(k=>{
+        if(st[k]==='Winnaar'||st[k]==='1'){
+          trophies++;
+          if(k==='league'){champion=true;seasonChamp=true;}
+          if(k==='cl'){clWinner=true;seasonCL=true;}
+          if(k==='cup'||k==='facup'||k==='eflcup')seasonCup=true;
+        }
+      });
+      if(seasonChamp&&seasonCup&&seasonCL)treble=true;
+      const seasonMatches=myMatches.filter(m=>m.season===season);
+      if(seasonMatches.length>=10){
+        const noLoss=seasonMatches.every(m=>{const isHome=m.home===career.team;const my=isHome?m.homeScore:m.awayScore,their=isHome?m.awayScore:m.homeScore;return my>=their;});
+        if(noLoss)unbeatenSeason=true;
+      }
+    });
+  }
+  return{matches:myMatches.length,wins,draws,losses,goalsFor:gf,goalsAgainst:ga,cleanSheets,biggestWin,bestStreak,comebacks,trophies,champion,clWinner,treble,unbeatenSeason,transfers:(career.transfers||[]).length,squadSize:(career.players||[]).length,careerCount:data.careers.length};
+}
+
+function renderAchievements(){
+  const el=document.getElementById('achievements-list');
+  if(!career){el.innerHTML='<div class="no-data">Maak eerst een career mode aan</div>';return;}
+  const stats=calcCareerStats();
+  const unlocked=ACHIEVEMENTS.filter(a=>a.check(stats));
+  const locked=ACHIEVEMENTS.filter(a=>!a.check(stats));
+  el.innerHTML=`<div style="margin-bottom:16px;font-size:14px;color:#888">${unlocked.length}/${ACHIEVEMENTS.length} badges behaald</div>`+
+    unlocked.map(a=>`<div class="badge unlocked"><div class="badge-icon ${a.tier}"><i class="fa-solid ${a.icon}"></i></div><div class="badge-info"><h4>${a.name}</h4><p>${a.desc}</p></div></div>`).join('')+
+    (locked.length?`<div style="margin:20px 0 10px;font-size:14px;color:#555">Nog te behalen:</div>`:'')+
+    locked.map(a=>`<div class="badge locked"><div class="badge-icon locked"><i class="fa-solid ${a.icon}"></i></div><div class="badge-info"><h4>${a.name}</h4><p>${a.desc}</p></div></div>`).join('');
+}
+
+// ============================================
+// SEASON REVIEW
+// ============================================
+function populateReviewSeasons(){
+  if(!career)return;
+  const el=document.getElementById('review-season');
+  const val=el.value;
+  el.innerHTML=career.seasons.map(s=>`<option>${s}</option>`).join('');
+  if(val)el.value=val;
+}
+
+function renderSeasonReview(){
+  const el=document.getElementById('season-review-content');
+  if(!career){el.innerHTML='<div class="no-data">Maak eerst een career mode aan</div>';return;}
+  const season=document.getElementById('review-season').value;
+  if(!season){el.innerHTML='';return;}
+  const myMatches=(career.matches||[]).filter(m=>m.season===season&&(m.home===career.team||m.away===career.team));
+  if(!myMatches.length){el.innerHTML='<div class="no-data">Geen wedstrijden in dit seizoen</div>';return;}
+
+  let wins=0,draws=0,losses=0,gf=0,ga=0,cleanSheets=0,streak=0,bestStreak=0,bestWin=null,worstLoss=null;
+  myMatches.forEach(m=>{
+    const isHome=m.home===career.team;
+    const my=isHome?m.homeScore:m.awayScore,their=isHome?m.awayScore:m.homeScore;
+    gf+=my;ga+=their;
+    if(their===0&&my>0)cleanSheets++;
+    if(my>their){wins++;streak++;if(streak>bestStreak)bestStreak=streak;
+      if(!bestWin||my-their>bestWin.diff)bestWin={m,diff:my-their};
+    }else{streak=0;if(my<their){losses++;if(!worstLoss||their-my>worstLoss.diff)worstLoss={m,diff:their-my};}else draws++;}
+  });
+
+  const st=career.standings?career.standings[season]:null;
+  const league=getLeague();
+  let trophyHtml='<span style="color:#555">Geen klassement opgeslagen</span>';
+  if(st){
+    trophyHtml=league.trophies.map(t=>{
+      const val=st[t.id];if(!val)return'';
+      const icon=val==='Winnaar'||val==='1'?'<i class="fa-solid fa-trophy" style="color:#ffd700"></i>':'';
+      const display=t.type==='pos'&&val?'#'+val:val;
+      return`<div style="display:flex;align-items:center;gap:8px;padding:4px 0"><span style="color:#888;min-width:120px;font-size:12px">${t.label}</span><span style="font-weight:600">${icon} ${display}</span></div>`;
+    }).filter(x=>x).join('')||'<span style="color:#555">Niet ingevuld</span>';
+  }
+
+  const transfers=(career.transfers||[]).filter(t=>t.season===season);
+  const bought=transfers.filter(t=>t.type==='buy'||t.type==='free'||t.type==='loan-in');
+  const sold=transfers.filter(t=>t.type==='sell'||t.type==='loan-out');
+
+  el.innerHTML=`
+    <div class="review-card"><h4>Resultaten</h4>
+      <div class="stats-grid" style="margin-bottom:0">
+        <div class="stat-card"><div class="value">${myMatches.length}</div><div class="label">Gespeeld</div></div>
+        <div class="stat-card"><div class="value" style="color:#4CAF50">${wins}</div><div class="label">Gewonnen</div></div>
+        <div class="stat-card"><div class="value" style="color:#FF9800">${draws}</div><div class="label">Gelijk</div></div>
+        <div class="stat-card"><div class="value" style="color:#f44336">${losses}</div><div class="label">Verloren</div></div>
+        <div class="stat-card"><div class="value">${gf}</div><div class="label">Goals voor</div></div>
+        <div class="stat-card"><div class="value">${ga}</div><div class="label">Goals tegen</div></div>
+      </div>
+    </div>
+    <div class="review-card"><h4>Highlights</h4>
+      <div class="review-highlight"><span class="rh-label">Win percentage</span><span class="rh-value" style="color:#4CAF50">${Math.round(wins/myMatches.length*100)}%</span></div>
+      <div class="review-highlight"><span class="rh-label">Langste winstreak</span><span class="rh-value">${bestStreak} wedstrijden</span></div>
+      <div class="review-highlight"><span class="rh-label">Clean sheets</span><span class="rh-value">${cleanSheets}</span></div>
+      <div class="review-highlight"><span class="rh-label">Goals per wedstrijd</span><span class="rh-value">${(gf/myMatches.length).toFixed(1)}</span></div>
+      ${bestWin?`<div class="review-highlight"><span class="rh-label">Beste overwinning</span><span class="rh-value" style="color:#4CAF50">${bestWin.m.home} ${bestWin.m.homeScore}-${bestWin.m.awayScore} ${bestWin.m.away}</span></div>`:''}
+      ${worstLoss?`<div class="review-highlight"><span class="rh-label">Slechtste nederlaag</span><span class="rh-value" style="color:#f44336">${worstLoss.m.home} ${worstLoss.m.homeScore}-${worstLoss.m.awayScore} ${worstLoss.m.away}</span></div>`:''}
+    </div>
+    <div class="review-card"><h4>Klassement &amp; Trofeeën</h4>${trophyHtml}</div>
+    <div class="review-card"><h4>Transfers</h4>
+      <div class="review-highlight"><span class="rh-label">Inkomend</span><span class="rh-value">${bought.length} spelers</span></div>
+      <div class="review-highlight"><span class="rh-label">Uitgaand</span><span class="rh-value">${sold.length} spelers</span></div>
+    </div>`;
+}
+
+// ============================================
+// HEAD TO HEAD
+// ============================================
+async function loadH2HPlayers(){
+  try{
+    const snap=await db.collection('users').get();
+    const players=[];
+    for(const doc of snap.docs){
+      const profile=doc.data();
+      const dataDoc=await db.collection('users').doc(doc.id).collection('data').doc('main').get();
+      if(!dataDoc.exists)continue;
+      const d=dataDoc.data();
+      if(!d.careers||!d.careers.length)continue;
+      players.push({uid:doc.id,name:profile.name||'Onbekend',data:d});
+    }
+    ['h2h-player1','h2h-player2'].forEach(id=>{
+      const el=document.getElementById(id);
+      el.innerHTML=players.map(p=>`<option value="${p.uid}">${p.name}</option>`).join('');
+    });
+    window._h2hPlayers=players;
+  }catch(e){console.error(e);}
+}
+
+function calcStatsForData(d){
+  let matches=0,wins=0,gf=0,ga=0,cleanSheets=0,bestStreak=0,streak=0,trophies=0;
+  d.careers.forEach(c=>{
+    const my=(c.matches||[]).filter(m=>m.home===c.team||m.away===c.team);
+    my.forEach(m=>{
+      const isHome=m.home===c.team;
+      const mg=isHome?m.homeScore:m.awayScore,tg=isHome?m.awayScore:m.homeScore;
+      matches++;gf+=mg;ga+=tg;
+      if(tg===0&&mg>0)cleanSheets++;
+      if(mg>tg){wins++;streak++;if(streak>bestStreak)bestStreak=streak;}else{streak=0;}
+    });
+    if(c.standings)Object.values(c.standings).forEach(st=>Object.values(st).forEach(v=>{if(v==='Winnaar'||v==='1')trophies++;}));
+  });
+  return{careers:d.careers.length,matches,wins,winPct:matches?Math.round(wins/matches*100):0,gf,ga,gpg:matches?(gf/matches).toFixed(1):'0',gapg:matches?(ga/matches).toFixed(1):'0',cleanSheets,bestStreak,trophies};
+}
+
+function renderH2H(){
+  const el=document.getElementById('h2h-content');
+  if(!window._h2hPlayers){el.innerHTML='<div class="no-data">Laden...</div>';return;}
+  const uid1=document.getElementById('h2h-player1').value;
+  const uid2=document.getElementById('h2h-player2').value;
+  if(uid1===uid2){el.innerHTML='<div class="no-data">Kies twee verschillende spelers</div>';return;}
+  const p1=window._h2hPlayers.find(p=>p.uid===uid1);
+  const p2=window._h2hPlayers.find(p=>p.uid===uid2);
+  if(!p1||!p2)return;
+  const s1=calcStatsForData(p1.data);
+  const s2=calcStatsForData(p2.data);
+
+  function statRow(label,v1,v2,higherBetter){
+    const n1=parseFloat(v1),n2=parseFloat(v2);
+    const w1=higherBetter?n1>n2:n1<n2;
+    const w2=higherBetter?n2>n1:n2<n1;
+    return`<div class="h2h-stat">
+      <div class="h2h-val ${w1?'h2h-winner':w2?'h2h-loser':''}">${v1}</div>
+      <div class="h2h-label">${label}</div>
+      <div class="h2h-val ${w2?'h2h-winner':w1?'h2h-loser':''}">${v2}</div>
+    </div>`;
+  }
+
+  el.innerHTML=`
+    <div class="h2h-grid" style="margin-top:16px">
+      <div class="h2h-player" style="border-radius:12px 0 0 12px"><div style="font-size:16px;font-weight:700">${p1.name}</div></div>
+      <div class="h2h-vs">VS</div>
+      <div class="h2h-player" style="border-radius:0 12px 12px 0"><div style="font-size:16px;font-weight:700">${p2.name}</div></div>
+    </div>
+    ${statRow('Careers',s1.careers,s2.careers,true)}
+    ${statRow('Wedstrijden',s1.matches,s2.matches,true)}
+    ${statRow('Win %',s1.winPct+'%',s2.winPct+'%',true)}
+    ${statRow('Goals/wedstrijd',s1.gpg,s2.gpg,true)}
+    ${statRow('Tegen/wedstrijd',s1.gapg,s2.gapg,false)}
+    ${statRow('Clean sheets',s1.cleanSheets,s2.cleanSheets,true)}
+    ${statRow('Beste streak',s1.bestStreak,s2.bestStreak,true)}
+    ${statRow('Trofeeën',s1.trophies,s2.trophies,true)}`;
+}
 
 function generateCode(uid){
   let hash=0;
