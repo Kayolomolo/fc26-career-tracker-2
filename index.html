@@ -168,7 +168,8 @@ textarea { width: 100%; min-height: 60px; resize: vertical; }
       <p>Vul je naam in om te beginnen</p>
       <input type="text" id="login-name" placeholder="Jouw naam" maxlength="20">
       <button class="btn btn-primary" onclick="doLogin()">Start</button>
-      <p style="margin-top:16px;font-size:11px;color:#444">Jij en je vrienden zien elkaars career modes</p>
+      <div id="existing-accounts" style="margin-top:16px"></div>
+      <p style="margin-top:12px;font-size:11px;color:#444">Jij en je vrienden zien elkaars career modes</p>
     </div>
   </div>
 
@@ -510,38 +511,63 @@ let saveTimeout = null;
 // ============================================
 // FIREBASE AUTH & DATA
 // ============================================
+function getSavedAccounts() {
+  try { return JSON.parse(localStorage.getItem('fc26_accounts') || '[]'); } catch(e) { return []; }
+}
+
+function saveAccount(uid, name) {
+  const accounts = getSavedAccounts();
+  const existing = accounts.find(a => a.uid === uid);
+  if (existing) { existing.name = name; } else { accounts.push({ uid, name }); }
+  localStorage.setItem('fc26_accounts', JSON.stringify(accounts));
+}
+
+function showExistingAccounts() {
+  const accounts = getSavedAccounts();
+  const el = document.getElementById('existing-accounts');
+  if (!accounts.length) { el.innerHTML = ''; return; }
+  el.innerHTML = `<p style="font-size:12px;color:#888;margin-bottom:8px">Of log in op een bestaand account:</p>` +
+    accounts.map(a => `<button class="btn btn-outline" style="width:100%;margin-bottom:6px;display:flex;align-items:center;justify-content:center;gap:8px" onclick="loginExisting('${a.uid}','${a.name.replace(/'/g,"\\'")}')">
+      <i class="fa-solid fa-user" style="color:#0088ff"></i> ${a.name}
+    </button>`).join('');
+}
+
 function doLogin() {
   const name = document.getElementById('login-name').value.trim();
   if (!name) return alert('Vul je naam in');
   localStorage.setItem('fc26_username', name);
+  localStorage.removeItem('fc26_relogin_uid');
   auth.signInAnonymously().catch(e => alert('Login mislukt: ' + e.message));
 }
 
-function doLogout() {
-  localStorage.removeItem('fc26_username');
-  auth.signOut();
-  document.getElementById('login-screen').style.display = '';
-  document.getElementById('main-app').style.display = 'none';
+function loginExisting(uid, name) {
+  localStorage.setItem('fc26_username', name);
+  localStorage.setItem('fc26_relogin_uid', uid);
+  if (auth.currentUser) {
+    loadUserData(uid, name);
+  } else {
+    auth.signInAnonymously().catch(e => alert('Login mislukt: ' + e.message));
+  }
 }
 
-auth.onAuthStateChanged(async user => {
-  if (!user) {
-    document.getElementById('login-screen').style.display = '';
-    document.getElementById('main-app').style.display = 'none';
-    return;
-  }
-  const name = localStorage.getItem('fc26_username');
-  if (!name) { document.getElementById('login-screen').style.display = ''; document.getElementById('main-app').style.display = 'none'; return; }
+function doLogout() {
+  document.getElementById('login-screen').style.display = '';
+  document.getElementById('main-app').style.display = 'none';
+  localStorage.removeItem('fc26_username');
+  showExistingAccounts();
+}
 
-  currentUserId = user.uid;
+async function loadUserData(uid, name) {
+  currentUserId = uid;
   currentUserName = name;
   document.getElementById('display-name').textContent = name;
   document.getElementById('login-screen').style.display = 'none';
   document.getElementById('main-app').style.display = '';
+  saveAccount(uid, name);
 
   try {
-    await db.collection('users').doc(currentUserId).set({ name, lastSeen: firebase.firestore.FieldValue.serverTimestamp() }, { merge: true });
-    const doc = await db.collection('users').doc(currentUserId).collection('data').doc('main').get();
+    await db.collection('users').doc(uid).set({ name, lastSeen: firebase.firestore.FieldValue.serverTimestamp() }, { merge: true });
+    const doc = await db.collection('users').doc(uid).collection('data').doc('main').get();
     if (doc.exists) {
       data = doc.data();
       if (!data.teams || !data.teams.length) data.teams = defaultTeams;
@@ -559,6 +585,23 @@ auth.onAuthStateChanged(async user => {
 
   if (data.activeCareerId) career = data.careers.find(c => c.id === data.activeCareerId) || null;
   initApp();
+}
+
+auth.onAuthStateChanged(async user => {
+  if (!user) {
+    document.getElementById('login-screen').style.display = '';
+    document.getElementById('main-app').style.display = 'none';
+    showExistingAccounts();
+    return;
+  }
+  const name = localStorage.getItem('fc26_username');
+  if (!name) { document.getElementById('login-screen').style.display = ''; document.getElementById('main-app').style.display = 'none'; showExistingAccounts(); return; }
+
+  const reloginUid = localStorage.getItem('fc26_relogin_uid');
+  const uid = reloginUid || user.uid;
+  localStorage.removeItem('fc26_relogin_uid');
+
+  await loadUserData(uid, name);
 });
 
 async function saveToFirebase() {
@@ -742,6 +785,7 @@ function refreshAll(){populateSeasons();populateComps();populateTeamSelects();po
 function initApp(){refreshAll();renderTeams();}
 
 document.getElementById('login-name').addEventListener('keypress',function(e){if(e.key==='Enter')doLogin();});
+showExistingAccounts();
 
 function showImportModal(){showModal('import-modal');}
 
