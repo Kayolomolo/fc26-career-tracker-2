@@ -692,6 +692,9 @@ function doLogout() {
   showExistingAccounts();
 }
 
+let unsubscribeSync = null;
+let ignoreNextSync = false;
+
 async function loadUserData(uid, name) {
   currentUserId = uid;
   currentUserName = name;
@@ -720,6 +723,26 @@ async function loadUserData(uid, name) {
 
   if (data.activeCareerId) career = data.careers.find(c => c.id === data.activeCareerId) || null;
   initApp();
+  startRealtimeSync(uid);
+}
+
+function startRealtimeSync(uid) {
+  if (unsubscribeSync) unsubscribeSync();
+  unsubscribeSync = db.collection('users').doc(uid).collection('data').doc('main')
+    .onSnapshot(doc => {
+      if (ignoreNextSync) { ignoreNextSync = false; return; }
+      if (!doc.exists || isViewingFriend) return;
+      const newData = doc.data();
+      if (!newData) return;
+      if (!newData.teams || !newData.teams.length) newData.teams = defaultTeams;
+      if (!newData.careers) newData.careers = [];
+      data = newData;
+      if (data.activeCareerId) career = data.careers.find(c => c.id === data.activeCareerId) || null;
+      else career = null;
+      refreshAll();
+      renderTeams();
+      setSyncStatus('Gesynchroniseerd (live)');
+    }, err => { console.error('Sync error:', err); });
 }
 
 auth.onAuthStateChanged(async user => {
@@ -742,12 +765,14 @@ auth.onAuthStateChanged(async user => {
 async function saveToFirebase() {
   if (!currentUserId || isViewingFriend) return;
   setSyncStatus('Opslaan...');
+  ignoreNextSync = true;
   try {
     await db.collection('users').doc(currentUserId).collection('data').doc('main').set(data);
-    setSyncStatus('Gesynchroniseerd');
+    setSyncStatus('Gesynchroniseerd (live)');
   } catch(e) {
     setSyncStatus('Fout bij opslaan!');
     console.error(e);
+    ignoreNextSync = false;
   }
 }
 
