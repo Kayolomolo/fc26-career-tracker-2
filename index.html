@@ -157,6 +157,18 @@ textarea { width: 100%; min-height: 60px; resize: vertical; }
 .friend-card .friend-detail { font-size: 12px; color: #888; margin-top: 4px; }
 .viewing-banner { background: #1e2a3a; padding: 10px 16px; border-radius: 8px; text-align: center; margin-bottom: 16px; font-size: 13px; }
 .viewing-banner span { color: #00d4aa; font-weight: 600; }
+
+.lb-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+.lb-table th { font-size: 11px; color: #888; text-align: left; padding: 8px 10px; border-bottom: 1px solid #1e2a3a; text-transform: uppercase; letter-spacing: 0.5px; }
+.lb-table td { padding: 10px; border-bottom: 1px solid #1e2a3a; font-size: 13px; }
+.lb-table tr:hover { background: #1e2a3a33; }
+.lb-rank { font-size: 18px; font-weight: 700; min-width: 30px; text-align: center; }
+.lb-rank.gold { color: #ffd700; }
+.lb-rank.silver { color: #c0c0c0; }
+.lb-rank.bronze { color: #cd7f32; }
+.lb-name { font-weight: 600; }
+.lb-you { color: #00d4aa; }
+.lb-category { font-size: 15px; font-weight: 600; color: #0088ff; margin: 20px 0 10px; }
 </style>
 </head>
 <body>
@@ -197,6 +209,7 @@ textarea { width: 100%; min-height: 60px; resize: vertical; }
     <div class="career-bar" id="career-bar"></div>
 
     <div class="tabs" id="main-tabs">
+      <div class="tab" data-tab="leaderboard"><i class="fa-solid fa-ranking-star"></i> Leaderboard</div>
       <div class="tab" data-tab="friends"><i class="fa-solid fa-user-group"></i> Vrienden</div>
       <div class="tab active" data-tab="matches"><i class="fa-solid fa-gamepad"></i> Wedstrijden</div>
       <div class="tab" data-tab="standings"><i class="fa-solid fa-trophy"></i> Klassement</div>
@@ -205,6 +218,16 @@ textarea { width: 100%; min-height: 60px; resize: vertical; }
       <div class="tab" data-tab="progress"><i class="fa-solid fa-chart-line"></i> Progressie</div>
       <div class="tab" data-tab="transfers"><i class="fa-solid fa-right-left"></i> Transfers</div>
       <div class="tab" data-tab="teams"><i class="fa-solid fa-shield-halved"></i> Teams</div>
+    </div>
+
+    <!-- Leaderboard -->
+    <div class="panel" id="panel-leaderboard">
+      <div class="card">
+        <h3><i class="fa-solid fa-ranking-star"></i> Leaderboard</h3>
+        <p style="font-size:13px;color:#888">Stats van alle spelers vergeleken</p>
+      </div>
+      <div id="leaderboard-loading" class="no-data">Laden...</div>
+      <div id="leaderboard-content"></div>
     </div>
 
     <!-- Friends -->
@@ -838,7 +861,7 @@ function deleteTransfer(id){if(!career||isViewingFriend)return;career.transfers=
 function renderTransfers(){if(!career){document.getElementById('tf-list-in').innerHTML='<div class="no-data">Maak eerst een career mode aan</div>';document.getElementById('tf-list-out').innerHTML='';document.getElementById('tf-stats').innerHTML='';return;}if(!career.transfers)career.transfers=[];let transfers=career.transfers;const fs=document.getElementById('tf-filter-season').value;const ft=document.getElementById('tf-filter-type').value;if(fs)transfers=transfers.filter(t=>t.season===fs);if(ft)transfers=transfers.filter(t=>t.type===ft);const incoming=transfers.filter(t=>t.type==='buy'||t.type==='loan-in'||t.type==='free');const outgoing=transfers.filter(t=>t.type==='sell'||t.type==='loan-out');const spent=transfers.filter(t=>t.type==='buy'||t.type==='free').reduce((s,t)=>s+t.feeNum,0);const earned=transfers.filter(t=>t.type==='sell').reduce((s,t)=>s+t.feeNum,0);document.getElementById('tf-stats').innerHTML=`<div class="stat-card"><div class="value">${transfers.length}</div><div class="label">Transfers</div></div><div class="stat-card"><div class="value" style="color:#f44336">${formatFee(spent)}</div><div class="label">Uitgegeven</div></div><div class="stat-card"><div class="value" style="color:#4CAF50">${formatFee(earned)}</div><div class="label">Ontvangen</div></div><div class="stat-card"><div class="value" style="color:${earned>=spent?'#4CAF50':'#f44336'}">${earned>=spent?'+':''}${formatFee(Math.abs(earned-spent))}</div><div class="label">Saldo</div></div>`;function tfCard(t){const dir=(t.type==='sell'||t.type==='loan-out')?'Naar':'Van';return`<div class="match-card" style="margin-bottom:6px;cursor:default"><div style="display:flex;align-items:center;justify-content:space-between"><div style="display:flex;align-items:center;gap:12px"><i class="fa-solid ${TF_ICONS[t.type]}" style="color:${TF_COLORS[t.type]};font-size:18px;width:24px;text-align:center"></i><div><div style="font-weight:500">${t.player} ${t.position?'<span style="color:#0088ff;font-size:12px;font-weight:400">'+t.position+'</span>':''} ${t.rating?'<span style="color:#ffd700;font-size:12px;font-weight:400">'+t.rating+'</span>':''}</div><div style="font-size:12px;color:#888">${t.club?dir+' '+t.club:''}</div></div></div><div style="text-align:right;display:flex;align-items:center;gap:12px"><div><div style="font-weight:600;color:${TF_COLORS[t.type]}">${t.fee?formatFee(t.feeNum):'Gratis'}</div><div style="font-size:11px;color:#666">${t.season} | ${TF_LABELS[t.type]}</div></div>${isViewingFriend?'':`<button class="btn btn-danger btn-sm" onclick="deleteTransfer(${t.id})"><i class="fa-solid fa-trash"></i></button>`}</div></div></div>`;}document.getElementById('tf-list-in').innerHTML=incoming.length?incoming.map(tfCard).join(''):'<div class="no-data" style="padding:20px">Geen inkomende transfers</div>';document.getElementById('tf-list-out').innerHTML=outgoing.length?outgoing.map(tfCard).join(''):'<div class="no-data" style="padding:20px">Geen uitgaande transfers</div>';}
 
 // Tabs
-document.querySelectorAll('.tab').forEach(tab=>{tab.addEventListener('click',()=>{document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));tab.classList.add('active');document.getElementById('panel-'+tab.dataset.tab).classList.add('active');if(tab.dataset.tab==='stats')renderStats();if(tab.dataset.tab==='standings'){populateStandingInputs();renderStandings();}if(tab.dataset.tab==='teams')renderTeams();if(tab.dataset.tab==='squad')renderFormation();if(tab.dataset.tab==='progress'){populatePlayers();renderRatingsOverview();}if(tab.dataset.tab==='transfers')renderTransfers();if(tab.dataset.tab==='friends')loadFriends();});});
+document.querySelectorAll('.tab').forEach(tab=>{tab.addEventListener('click',()=>{document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));tab.classList.add('active');document.getElementById('panel-'+tab.dataset.tab).classList.add('active');if(tab.dataset.tab==='stats')renderStats();if(tab.dataset.tab==='standings'){populateStandingInputs();renderStandings();}if(tab.dataset.tab==='teams')renderTeams();if(tab.dataset.tab==='squad')renderFormation();if(tab.dataset.tab==='progress'){populatePlayers();renderRatingsOverview();}if(tab.dataset.tab==='transfers')renderTransfers();if(tab.dataset.tab==='friends')loadFriends();if(tab.dataset.tab==='leaderboard')loadLeaderboard();});});
 
 function refreshAll(){populateSeasons();populateComps();populateTeamSelects();populateStandingInputs();populatePlayers();renderMatches();renderCareerBar();renderStats();renderStandings();renderFormation();renderRatingsOverview();renderTransfers();}
 
@@ -848,6 +871,77 @@ document.getElementById('login-name').addEventListener('keypress',function(e){if
 showExistingAccounts();
 
 function showImportModal(){showModal('import-modal');}
+
+async function loadLeaderboard(){
+  const loadEl=document.getElementById('leaderboard-loading');
+  const contentEl=document.getElementById('leaderboard-content');
+  loadEl.style.display='';contentEl.innerHTML='';
+  try {
+    const usersSnap=await db.collection('users').get();
+    const players=[];
+    for(const userDoc of usersSnap.docs){
+      const profile=userDoc.data();
+      const dataDoc=await db.collection('users').doc(userDoc.id).collection('data').doc('main').get();
+      if(!dataDoc.exists)continue;
+      const d=dataDoc.data();
+      if(!d.careers||!d.careers.length)continue;
+      let totalMatches=0,totalWins=0,totalGF=0,totalGA=0,trophies=[];
+      d.careers.forEach(c=>{
+        const myMatches=(c.matches||[]).filter(m=>m.home===c.team||m.away===c.team);
+        myMatches.forEach(m=>{
+          const isHome=m.home===c.team;
+          const my=isHome?m.homeScore:m.awayScore,their=isHome?m.awayScore:m.homeScore;
+          totalMatches++;totalGF+=my;totalGA+=their;
+          if(my>their)totalWins++;
+        });
+        if(c.standings){
+          Object.keys(c.standings).forEach(season=>{
+            const st=c.standings[season];
+            Object.keys(st).forEach(k=>{
+              if(st[k]==='Winnaar')trophies.push(season);
+              if(st[k]==='1')trophies.push(season);
+            });
+          });
+        }
+      });
+      players.push({
+        name:profile.name||'Onbekend',
+        uid:userDoc.id,
+        careers:d.careers.length,
+        matches:totalMatches,
+        winPct:totalMatches?Math.round(totalWins/totalMatches*100):0,
+        gpg:totalMatches?(totalGF/totalMatches).toFixed(1):'0',
+        gapg:totalMatches?(totalGA/totalMatches).toFixed(1):'0',
+        trophyCount:trophies.length
+      });
+    }
+    loadEl.style.display='none';
+    if(!players.length){contentEl.innerHTML='<div class="no-data">Geen spelers gevonden</div>';return;}
+
+    function rankClass(i){return i===0?'gold':i===1?'silver':i===2?'bronze':'';}
+    function nameHtml(p){return`<span class="lb-name ${p.uid===currentUserId?'lb-you':''}">${p.name}${p.uid===currentUserId?' (jij)':''}</span>`;}
+
+    function makeTable(title,sortedPlayers,valueFn){
+      let html=`<div class="lb-category">${title}</div><table class="lb-table"><tr><th>#</th><th>Speler</th><th style="text-align:right">Waarde</th></tr>`;
+      sortedPlayers.forEach((p,i)=>{
+        html+=`<tr><td class="lb-rank ${rankClass(i)}">${i+1}</td><td>${nameHtml(p)}</td><td style="text-align:right;font-weight:600">${valueFn(p)}</td></tr>`;
+      });
+      return html+'</table>';
+    }
+
+    let html='';
+    html+=makeTable('Aantal careers',[...players].sort((a,b)=>b.careers-a.careers),p=>p.careers);
+    html+=makeTable('Totaal wedstrijden',[...players].sort((a,b)=>b.matches-a.matches),p=>p.matches);
+    html+=makeTable('Win percentage',[...players].sort((a,b)=>b.winPct-a.winPct),p=>p.winPct+'%');
+    html+=makeTable('Goals per wedstrijd',[...players].sort((a,b)=>b.gpg-a.gpg),p=>p.gpg);
+    html+=makeTable('Goals tegen per wedstrijd',[...players].sort((a,b)=>a.gapg-b.gapg),p=>p.gapg);
+    html+=makeTable('Trophies gewonnen',[...players].sort((a,b)=>b.trophyCount-a.trophyCount),p=>p.trophyCount);
+    contentEl.innerHTML=html;
+  }catch(e){
+    console.error(e);loadEl.style.display='none';
+    contentEl.innerHTML='<div class="no-data">Kon leaderboard niet laden</div>';
+  }
+}
 
 function doImport(){
   let raw = document.getElementById('import-text').value.trim();
