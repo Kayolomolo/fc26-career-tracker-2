@@ -199,6 +199,19 @@ textarea { width: 100%; min-height: 60px; resize: vertical; }
 .h2h-label { display: flex; align-items: center; justify-content: center; padding: 10px 8px; font-size: 11px; color: #888; text-transform: uppercase; border-left: 1px solid #1e2a3a; border-right: 1px solid #1e2a3a; }
 .h2h-winner { color: #4CAF50; }
 .h2h-loser { color: #f44336; }
+
+.trophy-cabinet { display: flex; flex-wrap: wrap; gap: 16px; justify-content: center; padding: 20px 0; }
+.trophy-shelf { background: linear-gradient(180deg, #111827 0%, #0d1117 100%); border-radius: 16px; border: 1px solid #1e2a3a; padding: 20px 16px 16px; text-align: center; width: 140px; position: relative; }
+.trophy-shelf::after { content: ''; position: absolute; bottom: 50px; left: 8px; right: 8px; height: 3px; background: linear-gradient(90deg, #1e2a3a, #2a3a4a, #1e2a3a); border-radius: 2px; }
+.trophy-svg { width: 80px; height: 100px; margin: 0 auto 8px; position: relative; z-index: 1; }
+.trophy-label { font-size: 11px; color: #888; margin-top: 4px; }
+.trophy-season { font-size: 10px; color: #0088ff; font-weight: 600; }
+.trophy-count { position: absolute; top: 8px; right: 8px; background: #ffd700; color: #000; font-size: 10px; font-weight: 700; width: 20px; height: 20px; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
+
+@media (min-width: 600px) {
+  .trophy-shelf { width: 160px; padding: 24px 20px 20px; }
+  .trophy-svg { width: 100px; height: 120px; }
+}
 </style>
 </head>
 <body>
@@ -253,6 +266,7 @@ textarea { width: 100%; min-height: 60px; resize: vertical; }
       <div class="tab" data-tab="squad"><i class="fa-solid fa-users"></i> Opstelling</div>
       <div class="tab" data-tab="progress"><i class="fa-solid fa-chart-line"></i> Progressie</div>
       <div class="tab" data-tab="transfers"><i class="fa-solid fa-right-left"></i> Transfers</div>
+      <div class="tab" data-tab="trophies"><i class="fa-solid fa-trophy"></i> Trofeeën</div>
       <div class="tab" data-tab="achievements"><i class="fa-solid fa-medal"></i> Badges</div>
       <div class="tab" data-tab="season-review"><i class="fa-solid fa-book"></i> Seizoen</div>
       <div class="tab" data-tab="h2h"><i class="fa-solid fa-scale-balanced"></i> H2H</div>
@@ -450,6 +464,16 @@ textarea { width: 100%; min-height: 60px; resize: vertical; }
       <div id="tf-list-in"></div>
       <h3 style="margin:16px 0 12px;font-size:16px">Uitgaand</h3>
       <div id="tf-list-out"></div>
+    </div>
+
+    <!-- Trophy Cabinet -->
+    <div class="panel" id="panel-trophies">
+      <div class="card">
+        <h3><i class="fa-solid fa-trophy"></i> Trofeeënkast</h3>
+        <p style="font-size:13px;color:#888">Al je gewonnen prijzen over alle seizoenen</p>
+      </div>
+      <div class="trophy-cabinet" id="trophy-cabinet"></div>
+      <div id="trophy-empty" class="no-data" style="display:none">Nog geen trofeeën gewonnen. Blijf spelen!</div>
     </div>
 
     <!-- Achievements -->
@@ -1070,7 +1094,7 @@ function deleteTransfer(id){if(!career||isViewingFriend)return;career.transfers=
 function renderTransfers(){if(!career){document.getElementById('tf-list-in').innerHTML='<div class="no-data">Maak eerst een career mode aan</div>';document.getElementById('tf-list-out').innerHTML='';document.getElementById('tf-stats').innerHTML='';return;}if(!career.transfers)career.transfers=[];let transfers=career.transfers;const fs=document.getElementById('tf-filter-season').value;const ft=document.getElementById('tf-filter-type').value;if(fs)transfers=transfers.filter(t=>t.season===fs);if(ft)transfers=transfers.filter(t=>t.type===ft);const incoming=transfers.filter(t=>t.type==='buy'||t.type==='loan-in'||t.type==='free');const outgoing=transfers.filter(t=>t.type==='sell'||t.type==='loan-out');const spent=transfers.filter(t=>t.type==='buy'||t.type==='free').reduce((s,t)=>s+t.feeNum,0);const earned=transfers.filter(t=>t.type==='sell').reduce((s,t)=>s+t.feeNum,0);document.getElementById('tf-stats').innerHTML=`<div class="stat-card"><div class="value">${transfers.length}</div><div class="label">Transfers</div></div><div class="stat-card"><div class="value" style="color:#f44336">${formatFee(spent)}</div><div class="label">Uitgegeven</div></div><div class="stat-card"><div class="value" style="color:#4CAF50">${formatFee(earned)}</div><div class="label">Ontvangen</div></div><div class="stat-card"><div class="value" style="color:${earned>=spent?'#4CAF50':'#f44336'}">${earned>=spent?'+':''}${formatFee(Math.abs(earned-spent))}</div><div class="label">Saldo</div></div>`;function tfCard(t){const dir=(t.type==='sell'||t.type==='loan-out')?'Naar':'Van';return`<div class="match-card" style="margin-bottom:6px;cursor:default"><div style="display:flex;align-items:center;justify-content:space-between"><div style="display:flex;align-items:center;gap:12px"><i class="fa-solid ${TF_ICONS[t.type]}" style="color:${TF_COLORS[t.type]};font-size:18px;width:24px;text-align:center"></i><div><div style="font-weight:500">${t.player} ${t.position?'<span style="color:#0088ff;font-size:12px;font-weight:400">'+t.position+'</span>':''} ${t.rating?'<span style="color:#ffd700;font-size:12px;font-weight:400">'+t.rating+'</span>':''}</div><div style="font-size:12px;color:#888">${t.club?dir+' '+t.club:''}</div></div></div><div style="text-align:right;display:flex;align-items:center;gap:12px"><div><div style="font-weight:600;color:${TF_COLORS[t.type]}">${t.fee?formatFee(t.feeNum):'Gratis'}</div><div style="font-size:11px;color:#666">${t.season} | ${TF_LABELS[t.type]}</div></div>${isViewingFriend?'':`<button class="btn btn-danger btn-sm" onclick="deleteTransfer(${t.id})"><i class="fa-solid fa-trash"></i></button>`}</div></div></div>`;}document.getElementById('tf-list-in').innerHTML=incoming.length?incoming.map(tfCard).join(''):'<div class="no-data" style="padding:20px">Geen inkomende transfers</div>';document.getElementById('tf-list-out').innerHTML=outgoing.length?outgoing.map(tfCard).join(''):'<div class="no-data" style="padding:20px">Geen uitgaande transfers</div>';}
 
 // Tabs
-document.querySelectorAll('.tab').forEach(tab=>{tab.addEventListener('click',()=>{document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));tab.classList.add('active');document.getElementById('panel-'+tab.dataset.tab).classList.add('active');if(tab.dataset.tab==='stats')renderStats();if(tab.dataset.tab==='standings'){populateStandingInputs();renderStandings();}if(tab.dataset.tab==='teams')renderTeams();if(tab.dataset.tab==='squad')renderFormation();if(tab.dataset.tab==='progress'){populatePlayers();renderRatingsOverview();}if(tab.dataset.tab==='transfers')renderTransfers();if(tab.dataset.tab==='friends')loadFriends();if(tab.dataset.tab==='leaderboard')loadLeaderboard();if(tab.dataset.tab==='achievements')renderAchievements();if(tab.dataset.tab==='season-review'){populateReviewSeasons();renderSeasonReview();}if(tab.dataset.tab==='h2h')loadH2HPlayers();});});
+document.querySelectorAll('.tab').forEach(tab=>{tab.addEventListener('click',()=>{document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));tab.classList.add('active');document.getElementById('panel-'+tab.dataset.tab).classList.add('active');if(tab.dataset.tab==='stats')renderStats();if(tab.dataset.tab==='standings'){populateStandingInputs();renderStandings();}if(tab.dataset.tab==='teams')renderTeams();if(tab.dataset.tab==='squad')renderFormation();if(tab.dataset.tab==='progress'){populatePlayers();renderRatingsOverview();}if(tab.dataset.tab==='transfers')renderTransfers();if(tab.dataset.tab==='friends')loadFriends();if(tab.dataset.tab==='leaderboard')loadLeaderboard();if(tab.dataset.tab==='trophies')renderTrophyCabinet();if(tab.dataset.tab==='achievements')renderAchievements();if(tab.dataset.tab==='season-review'){populateReviewSeasons();renderSeasonReview();}if(tab.dataset.tab==='h2h')loadH2HPlayers();});});
 
 function refreshAll(){populateSeasons();populateComps();populateTeamSelects();populateStandingInputs();populatePlayers();renderMatches();renderCareerBar();renderStats();renderStandings();renderFormation();renderRatingsOverview();renderTransfers();}
 
@@ -1080,6 +1104,125 @@ document.getElementById('login-name').addEventListener('keypress',function(e){if
 showExistingAccounts();
 
 function showImportModal(){showModal('import-modal');}
+
+// ============================================
+// TROPHY CABINET
+// ============================================
+const TROPHY_SVGS = {
+  league: `<svg viewBox="0 0 100 120" xmlns="http://www.w3.org/2000/svg">
+    <defs><linearGradient id="gold1" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#ffd700"/><stop offset="50%" stop-color="#ffed4a"/><stop offset="100%" stop-color="#daa520"/></linearGradient></defs>
+    <ellipse cx="50" cy="108" rx="22" ry="4" fill="#1a1a2e" opacity="0.5"/>
+    <rect x="38" y="85" width="24" height="20" rx="2" fill="url(#gold1)" stroke="#daa520" stroke-width="1"/>
+    <rect x="42" y="95" width="16" height="4" rx="1" fill="#daa520"/>
+    <rect x="35" y="80" width="30" height="8" rx="2" fill="url(#gold1)" stroke="#daa520" stroke-width="1"/>
+    <path d="M30 75 Q30 30 50 15 Q70 30 70 75 Z" fill="url(#gold1)" stroke="#daa520" stroke-width="1.5"/>
+    <path d="M30 55 Q15 50 18 35 Q22 25 30 35" fill="url(#gold1)" stroke="#daa520" stroke-width="1"/>
+    <path d="M70 55 Q85 50 82 35 Q78 25 70 35" fill="url(#gold1)" stroke="#daa520" stroke-width="1"/>
+    <circle cx="50" cy="48" r="12" fill="none" stroke="#daa520" stroke-width="1.5"/>
+    <text x="50" y="53" text-anchor="middle" font-size="14" font-weight="700" fill="#daa520">1</text>
+  </svg>`,
+  cl: `<svg viewBox="0 0 100 120" xmlns="http://www.w3.org/2000/svg">
+    <defs><linearGradient id="silver1" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#e8e8e8"/><stop offset="50%" stop-color="#ffffff"/><stop offset="100%" stop-color="#c0c0c0"/></linearGradient></defs>
+    <ellipse cx="50" cy="108" rx="22" ry="4" fill="#1a1a2e" opacity="0.5"/>
+    <rect x="38" y="88" width="24" height="18" rx="2" fill="url(#silver1)" stroke="#999" stroke-width="1"/>
+    <rect x="35" y="82" width="30" height="8" rx="2" fill="url(#silver1)" stroke="#999" stroke-width="1"/>
+    <path d="M25 75 Q25 25 50 10 Q75 25 75 75 Z" fill="url(#silver1)" stroke="#999" stroke-width="1.5"/>
+    <path d="M25 50 Q8 45 12 25 Q18 12 28 30" fill="url(#silver1)" stroke="#999" stroke-width="1"/>
+    <path d="M75 50 Q92 45 88 25 Q82 12 72 30" fill="url(#silver1)" stroke="#999" stroke-width="1"/>
+    <circle cx="50" cy="42" r="14" fill="none" stroke="#999" stroke-width="1.5"/>
+    <path d="M43 42 L48 38 L50 32 L52 38 L57 42 L52 44 L50 50 L48 44 Z" fill="#999"/>
+  </svg>`,
+  cup: `<svg viewBox="0 0 100 120" xmlns="http://www.w3.org/2000/svg">
+    <defs><linearGradient id="gold2" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#ffd700"/><stop offset="50%" stop-color="#ffed4a"/><stop offset="100%" stop-color="#b8860b"/></linearGradient></defs>
+    <ellipse cx="50" cy="108" rx="20" ry="4" fill="#1a1a2e" opacity="0.5"/>
+    <rect x="40" y="90" width="20" height="16" rx="2" fill="url(#gold2)" stroke="#b8860b" stroke-width="1"/>
+    <rect x="36" y="85" width="28" height="7" rx="2" fill="url(#gold2)" stroke="#b8860b" stroke-width="1"/>
+    <path d="M28 25 L28 55 Q28 80 50 82 Q72 80 72 55 L72 25 Z" fill="url(#gold2)" stroke="#b8860b" stroke-width="1.5"/>
+    <rect x="26" y="20" width="48" height="8" rx="3" fill="url(#gold2)" stroke="#b8860b" stroke-width="1"/>
+    <path d="M28 40 Q12 38 15 28 Q20 20 28 30" fill="url(#gold2)" stroke="#b8860b" stroke-width="1"/>
+    <path d="M72 40 Q88 38 85 28 Q80 20 72 30" fill="url(#gold2)" stroke="#b8860b" stroke-width="1"/>
+  </svg>`,
+  europa: `<svg viewBox="0 0 100 120" xmlns="http://www.w3.org/2000/svg">
+    <defs><linearGradient id="bronze1" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#cd7f32"/><stop offset="50%" stop-color="#e8a849"/><stop offset="100%" stop-color="#8b5a2b"/></linearGradient></defs>
+    <ellipse cx="50" cy="108" rx="18" ry="4" fill="#1a1a2e" opacity="0.5"/>
+    <rect x="42" y="85" width="16" height="20" rx="2" fill="url(#bronze1)" stroke="#8b5a2b" stroke-width="1"/>
+    <polygon points="50,12 35,50 30,50 30,70 70,70 70,50 65,50" fill="url(#bronze1)" stroke="#8b5a2b" stroke-width="1.5"/>
+    <polygon points="50,18 38,48 62,48" fill="none" stroke="#8b5a2b" stroke-width="1"/>
+    <rect x="30" y="70" width="40" height="8" rx="2" fill="url(#bronze1)" stroke="#8b5a2b" stroke-width="1"/>
+    <circle cx="50" cy="55" r="6" fill="none" stroke="#8b5a2b" stroke-width="1.5"/>
+  </svg>`,
+  conference: `<svg viewBox="0 0 100 120" xmlns="http://www.w3.org/2000/svg">
+    <defs><linearGradient id="green1" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#2e7d32"/><stop offset="50%" stop-color="#4CAF50"/><stop offset="100%" stop-color="#1b5e20"/></linearGradient></defs>
+    <ellipse cx="50" cy="108" rx="18" ry="4" fill="#1a1a2e" opacity="0.5"/>
+    <rect x="42" y="88" width="16" height="18" rx="2" fill="url(#green1)" stroke="#1b5e20" stroke-width="1"/>
+    <path d="M30 75 Q30 35 50 20 Q70 35 70 75 Z" fill="url(#green1)" stroke="#1b5e20" stroke-width="1.5"/>
+    <rect x="28" y="75" width="44" height="7" rx="2" fill="url(#green1)" stroke="#1b5e20" stroke-width="1"/>
+    <path d="M44 45 L50 30 L56 45 L50 50 Z" fill="#1b5e20" opacity="0.6"/>
+  </svg>`,
+  super: `<svg viewBox="0 0 100 120" xmlns="http://www.w3.org/2000/svg">
+    <defs><linearGradient id="blue1" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#1565c0"/><stop offset="50%" stop-color="#42a5f5"/><stop offset="100%" stop-color="#0d47a1"/></linearGradient></defs>
+    <ellipse cx="50" cy="108" rx="20" ry="4" fill="#1a1a2e" opacity="0.5"/>
+    <rect x="40" y="85" width="20" height="20" rx="3" fill="url(#blue1)" stroke="#0d47a1" stroke-width="1"/>
+    <circle cx="50" cy="50" r="30" fill="url(#blue1)" stroke="#0d47a1" stroke-width="2"/>
+    <circle cx="50" cy="50" r="22" fill="none" stroke="#42a5f5" stroke-width="1" opacity="0.5"/>
+    <path d="M50 30 L54 42 L67 42 L57 50 L60 63 L50 55 L40 63 L43 50 L33 42 L46 42 Z" fill="#fff" opacity="0.9"/>
+  </svg>`
+};
+
+const TROPHY_NAMES = {
+  league:'Competitie',cl:'Champions League',cup:'Beker',facup:'FA Cup',eflcup:'EFL Cup',
+  europa:'Europa League',conference:'Conference League',
+  super:'Super Cup',shield:'Community Shield'
+};
+
+function getTrophySvg(id) {
+  if (id==='cl') return TROPHY_SVGS.cl;
+  if (id==='europa') return TROPHY_SVGS.europa;
+  if (id==='conference') return TROPHY_SVGS.conference;
+  if (id==='league') return TROPHY_SVGS.league;
+  if (id==='super'||id==='shield') return TROPHY_SVGS.super;
+  return TROPHY_SVGS.cup;
+}
+
+function renderTrophyCabinet() {
+  const el = document.getElementById('trophy-cabinet');
+  const emptyEl = document.getElementById('trophy-empty');
+  if (!career) { el.innerHTML=''; emptyEl.style.display=''; emptyEl.textContent='Maak eerst een career mode aan'; return; }
+
+  const won = [];
+  if (career.standings) {
+    Object.keys(career.standings).forEach(season => {
+      const st = career.standings[season];
+      Object.keys(st).forEach(k => {
+        if (k.endsWith('_pts')) return;
+        if (st[k] === 'Winnaar' || st[k] === '1') {
+          won.push({ id: k, season });
+        }
+      });
+    });
+  }
+
+  if (!won.length) { el.innerHTML=''; emptyEl.style.display=''; emptyEl.textContent='Nog geen trofeeën gewonnen. Blijf spelen!'; return; }
+  emptyEl.style.display='none';
+
+  const grouped = {};
+  won.forEach(w => {
+    if (!grouped[w.id]) grouped[w.id] = [];
+    grouped[w.id].push(w.season);
+  });
+
+  el.innerHTML = Object.keys(grouped).map(id => {
+    const seasons = grouped[id];
+    const name = TROPHY_NAMES[id] || id;
+    const svg = getTrophySvg(id);
+    return `<div class="trophy-shelf">
+      ${seasons.length > 1 ? `<div class="trophy-count">${seasons.length}</div>` : ''}
+      <div class="trophy-svg">${svg}</div>
+      <div class="trophy-label">${name}</div>
+      <div class="trophy-season">${seasons.join(', ')}</div>
+    </div>`;
+  }).join('');
+}
 
 // ============================================
 // ACHIEVEMENTS
