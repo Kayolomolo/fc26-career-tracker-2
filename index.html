@@ -1,0 +1,713 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FC 26 Career Tracker 2.0</title>
+<link rel="icon" type="image/jpeg" href="Logo.jpeg">
+<link rel="apple-touch-icon" href="Logo.jpeg">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/firebase@10.12.2/firebase-app-compat.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/firebase@10.12.2/firebase-auth-compat.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/firebase@10.12.2/firebase-firestore-compat.min.js"></script>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0a0e1a; color: #e0e0e0; min-height: 100vh; -webkit-tap-highlight-color: transparent; }
+.app { max-width: 960px; margin: 0 auto; padding: 12px; }
+header { text-align: center; padding: 20px 0 12px; }
+header h1 { font-size: 24px; font-weight: 700; background: linear-gradient(135deg, #00d4aa, #0088ff); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+header p { color: #888; margin-top: 4px; font-size: 13px; }
+
+.user-bar { display: flex; align-items: center; justify-content: center; gap: 12px; margin-bottom: 12px; font-size: 13px; }
+.user-bar .user-name { color: #00d4aa; font-weight: 600; }
+.user-bar button { background: none; border: none; color: #666; cursor: pointer; font-size: 12px; }
+.user-bar button:hover { color: #ccc; }
+
+.online-dot { width: 8px; height: 8px; border-radius: 50%; background: #4CAF50; display: inline-block; }
+.sync-status { font-size: 11px; color: #555; text-align: center; margin-bottom: 8px; }
+
+.career-bar { display: flex; gap: 6px; align-items: center; justify-content: center; margin: 10px 0 16px; flex-wrap: wrap; }
+.career-chip { padding: 7px 12px; border-radius: 8px; border: 1px solid #1e2a3a; background: #111827; cursor: pointer; color: #888; font-size: 12px; font-weight: 500; transition: all .2s; display: flex; align-items: center; gap: 6px; }
+.career-chip:hover { border-color: #0088ff; color: #ccc; }
+.career-chip.active { background: #0088ff; border-color: #0088ff; color: #fff; }
+.career-chip .team-logo-sm { width: 20px; height: 20px; border-radius: 50%; overflow: hidden; display: flex; align-items: center; justify-content: center; font-size: 8px; font-weight: 700; }
+.career-chip .team-logo-sm img { width: 100%; height: 100%; object-fit: contain; }
+
+.tabs { display: flex; gap: 4px; margin-bottom: 16px; flex-wrap: wrap; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.tab { padding: 8px 12px; border-radius: 8px; border: 1px solid #1e2a3a; background: #111827; cursor: pointer; color: #888; font-size: 12px; font-weight: 500; transition: all .2s; white-space: nowrap; }
+.tab:hover { border-color: #0088ff; color: #ccc; }
+.tab.active { background: #0088ff; border-color: #0088ff; color: #fff; }
+.tab i { display: none; }
+.panel { display: none; }
+.panel.active { display: block; }
+
+.card { background: #111827; border-radius: 12px; padding: 16px; margin-bottom: 12px; border: 1px solid #1e2a3a; }
+.card h3 { margin-bottom: 12px; font-size: 15px; color: #00d4aa; }
+.form-row { display: flex; gap: 8px; align-items: center; margin-bottom: 10px; flex-wrap: wrap; }
+.form-row label { font-size: 12px; color: #888; min-width: 70px; }
+select, input[type="text"], input[type="number"], textarea { background: #0a0e1a; border: 1px solid #1e2a3a; color: #e0e0e0; padding: 10px 12px; border-radius: 8px; font-size: 16px; font-family: inherit; -webkit-appearance: none; }
+select { min-width: 140px; }
+input[type="number"] { width: 60px; text-align: center; }
+textarea { width: 100%; min-height: 60px; resize: vertical; }
+
+.btn { padding: 10px 20px; border-radius: 8px; border: none; cursor: pointer; font-size: 14px; font-weight: 600; transition: all .2s; touch-action: manipulation; }
+.btn-primary { background: #0088ff; color: #fff; }
+.btn-primary:hover, .btn-primary:active { background: #0066cc; }
+.btn-sm { padding: 8px 14px; font-size: 13px; }
+.btn-danger { background: #ff4444; color: #fff; }
+.btn-danger:hover, .btn-danger:active { background: #cc3333; }
+.btn-outline { background: transparent; border: 1px solid #1e2a3a; color: #888; }
+.btn-outline:hover, .btn-outline:active { border-color: #0088ff; color: #ccc; }
+
+.match-card { background: #111827; border-radius: 10px; padding: 12px; border: 1px solid #1e2a3a; margin-bottom: 8px; cursor: pointer; transition: border-color .2s; }
+.match-card:active { border-color: #0088ff; }
+.match-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.match-teams { display: flex; align-items: center; gap: 6px; flex: 1; min-width: 0; }
+.match-team { display: flex; align-items: center; gap: 6px; flex: 1; min-width: 0; }
+.match-team span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; }
+.match-team.away { justify-content: flex-end; flex-direction: row-reverse; text-align: right; }
+.team-logo { width: 28px; height: 28px; border-radius: 50%; background: #1e2a3a; display: flex; align-items: center; justify-content: center; font-size: 9px; font-weight: 700; overflow: hidden; flex-shrink: 0; }
+.team-logo img { width: 100%; height: 100%; object-fit: contain; }
+.match-score { font-size: 18px; font-weight: 700; min-width: 50px; text-align: center; color: #fff; flex-shrink: 0; }
+.match-meta { font-size: 11px; color: #666; text-align: right; flex-shrink: 0; }
+.match-comp { color: #0088ff; font-size: 10px; }
+.match-note { margin-top: 8px; padding-top: 8px; border-top: 1px solid #1e2a3a; font-size: 13px; color: #999; font-style: italic; display: none; }
+.match-note.show { display: block; }
+.match-expand { display: flex; align-items: center; justify-content: space-between; margin-top: 8px; padding-top: 8px; border-top: 1px solid #1e2a3a; }
+.match-expand .note-hint { font-size: 11px; color: #555; display: flex; align-items: center; gap: 4px; }
+
+.standings-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px; margin-bottom: 16px; }
+.standing-card { background: #111827; border-radius: 10px; padding: 12px; border: 1px solid #1e2a3a; }
+.standing-card h4 { font-size: 11px; color: #888; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 1px; }
+.standing-card .position { font-size: 24px; font-weight: 700; }
+.standing-card .position.gold { color: #ffd700; }
+.standing-card .position.silver { color: #c0c0c0; }
+.standing-card .position.bronze { color: #cd7f32; }
+
+.stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 16px; }
+.stat-card { background: #111827; border-radius: 10px; padding: 12px 8px; border: 1px solid #1e2a3a; text-align: center; }
+.stat-card .value { font-size: 22px; font-weight: 700; color: #00d4aa; }
+.stat-card .label { font-size: 11px; color: #888; margin-top: 2px; }
+
+.filter-row { display: flex; gap: 6px; margin-bottom: 12px; flex-wrap: wrap; }
+.filter-row select { font-size: 13px; padding: 8px; min-width: 120px; }
+.no-data { text-align: center; padding: 30px; color: #555; font-size: 14px; }
+
+.standing-inputs { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px; }
+.standing-input label { display: block; font-size: 11px; color: #888; margin-bottom: 4px; }
+.standing-input select, .standing-input input { width: 100%; }
+
+@media (min-width: 600px) {
+  .app { padding: 20px; }
+  header h1 { font-size: 28px; }
+  .tab i { display: inline; }
+  .tab { padding: 9px 16px; font-size: 13px; }
+  .match-card { padding: 14px 20px; }
+  .match-team span { font-size: 14px; }
+  .match-score { font-size: 22px; min-width: 70px; }
+  .team-logo { width: 32px; height: 32px; font-size: 11px; }
+  .stats-grid { grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); }
+  .stat-card .value { font-size: 28px; }
+  .standings-grid { grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); }
+}
+
+.pitch { position: relative; width: 100%; max-width: 500px; margin: 0 auto 20px; aspect-ratio: 68/100; background: #1a5e1a; border-radius: 12px; border: 2px solid #2a7e2a; overflow: visible; }
+.pitch::before { content: ''; position: absolute; top: 50%; left: 10%; right: 10%; height: 1px; background: rgba(255,255,255,0.2); }
+.pitch::after { content: ''; position: absolute; top: 35%; left: 25%; right: 25%; bottom: 35%; border: 1px solid rgba(255,255,255,0.15); border-radius: 50%; pointer-events: none; }
+.pitch-player { position: absolute; transform: translate(-50%,-50%); text-align: center; cursor: pointer; width: 64px; }
+.pitch-player .player-photo { width: 44px; height: 44px; border-radius: 50%; background: #0a0e1a; border: 2px solid #fff; margin: 0 auto 2px; overflow: hidden; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 700; color: #fff; }
+.pitch-player .player-photo img { width: 100%; height: 100%; object-fit: cover; }
+.pitch-player .player-name { font-size: 10px; color: #fff; text-shadow: 0 1px 3px rgba(0,0,0,0.8); font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 70px; }
+.pitch-player .player-rating { font-size: 9px; color: #ffd700; font-weight: 700; }
+.player-menu { position: absolute; top: 50%; left: 50%; transform: translate(-50%, 4px); background: #111827; border: 1px solid #1e2a3a; border-radius: 8px; padding: 6px 0; z-index: 50; min-width: 160px; box-shadow: 0 8px 24px rgba(0,0,0,0.5); }
+.player-menu div { padding: 8px 14px; font-size: 13px; cursor: pointer; display: flex; align-items: center; gap: 8px; white-space: nowrap; }
+.player-menu div:hover { background: #1e2a3a; }
+.player-menu div i { width: 16px; text-align: center; color: #0088ff; }
+
+.player-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 10px; margin-bottom: 20px; }
+.player-card { background: #111827; border-radius: 10px; padding: 12px 16px; border: 1px solid #1e2a3a; display: flex; align-items: center; gap: 12px; }
+.player-card .p-photo { width: 40px; height: 40px; border-radius: 50%; background: #1e2a3a; overflow: hidden; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 14px; flex-shrink: 0; }
+.player-card .p-photo img { width: 100%; height: 100%; object-fit: cover; }
+.player-card .p-info { flex: 1; min-width: 0; }
+.player-card .p-name { font-size: 14px; font-weight: 500; }
+.player-card .p-detail { font-size: 12px; color: #888; }
+.player-card .p-ratings { font-size: 12px; color: #00d4aa; }
+
+.modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 100; align-items: center; justify-content: center; }
+.modal-overlay.show { display: flex; }
+.modal { background: #111827; border-radius: 12px; padding: 24px; border: 1px solid #1e2a3a; width: 440px; max-width: 90vw; max-height: 90vh; overflow-y: auto; }
+.modal h3 { margin-bottom: 16px; color: #00d4aa; }
+.modal .form-row input, .modal .form-row select { flex: 1; }
+
+/* Login screen */
+.login-screen { display: flex; align-items: center; justify-content: center; min-height: 80vh; }
+.login-box { background: #111827; border-radius: 16px; padding: 32px; border: 1px solid #1e2a3a; width: 360px; max-width: 90vw; text-align: center; }
+.login-box img { width: 80px; height: 80px; border-radius: 50%; margin-bottom: 16px; object-fit: cover; }
+.login-box h2 { font-size: 22px; margin-bottom: 8px; background: linear-gradient(135deg, #00d4aa, #0088ff); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+.login-box p { color: #888; font-size: 13px; margin-bottom: 20px; }
+.login-box input { width: 100%; margin-bottom: 12px; }
+.login-box .btn { width: 100%; }
+
+/* Friends */
+.friend-card { background: #111827; border-radius: 10px; padding: 16px; border: 1px solid #1e2a3a; margin-bottom: 8px; cursor: pointer; transition: border-color .2s; }
+.friend-card:hover, .friend-card:active { border-color: #0088ff; }
+.friend-card .friend-name { font-size: 16px; font-weight: 600; }
+.friend-card .friend-detail { font-size: 12px; color: #888; margin-top: 4px; }
+.viewing-banner { background: #1e2a3a; padding: 10px 16px; border-radius: 8px; text-align: center; margin-bottom: 16px; font-size: 13px; }
+.viewing-banner span { color: #00d4aa; font-weight: 600; }
+</style>
+</head>
+<body>
+<div class="app">
+  <!-- Login -->
+  <div id="login-screen" class="login-screen">
+    <div class="login-box">
+      <img src="Logo.jpeg" alt="Logo">
+      <h2>EA FC 26 Career Tracker</h2>
+      <p>Vul je naam in om te beginnen</p>
+      <input type="text" id="login-name" placeholder="Jouw naam" maxlength="20">
+      <button class="btn btn-primary" onclick="doLogin()">Start</button>
+      <p style="margin-top:16px;font-size:11px;color:#444">Jij en je vrienden zien elkaars career modes</p>
+    </div>
+  </div>
+
+  <!-- Main app (hidden until login) -->
+  <div id="main-app" style="display:none">
+    <header>
+      <img src="Logo.jpeg" alt="Logo" style="width:56px;height:56px;border-radius:50%;margin-bottom:6px;object-fit:cover">
+      <h1>EA FC 26 Career Tracker</h1>
+    </header>
+
+    <div class="user-bar">
+      <span class="online-dot"></span>
+      <span>Ingelogd als <span class="user-name" id="display-name"></span></span>
+      <button onclick="doLogout()"><i class="fa-solid fa-right-from-bracket"></i> Uitloggen</button>
+    </div>
+    <div class="sync-status" id="sync-status"></div>
+
+    <div id="viewing-banner" class="viewing-banner" style="display:none">
+      Je bekijkt de careers van <span id="viewing-name"></span>
+      <button class="btn btn-outline btn-sm" style="margin-left:8px" onclick="stopViewing()">Terug naar mijn data</button>
+    </div>
+
+    <div class="career-bar" id="career-bar"></div>
+
+    <div class="tabs" id="main-tabs">
+      <div class="tab" data-tab="friends"><i class="fa-solid fa-user-group"></i> Vrienden</div>
+      <div class="tab active" data-tab="matches"><i class="fa-solid fa-gamepad"></i> Wedstrijden</div>
+      <div class="tab" data-tab="standings"><i class="fa-solid fa-trophy"></i> Klassement</div>
+      <div class="tab" data-tab="stats"><i class="fa-solid fa-chart-simple"></i> Stats</div>
+      <div class="tab" data-tab="squad"><i class="fa-solid fa-users"></i> Opstelling</div>
+      <div class="tab" data-tab="progress"><i class="fa-solid fa-chart-line"></i> Progressie</div>
+      <div class="tab" data-tab="transfers"><i class="fa-solid fa-right-left"></i> Transfers</div>
+      <div class="tab" data-tab="teams"><i class="fa-solid fa-shield-halved"></i> Teams</div>
+    </div>
+
+    <!-- Friends -->
+    <div class="panel" id="panel-friends">
+      <div class="card">
+        <h3><i class="fa-solid fa-user-group"></i> Vrienden</h3>
+        <p style="font-size:13px;color:#888">Tik op een vriend om zijn/haar career modes te bekijken</p>
+      </div>
+      <div id="friends-list"></div>
+    </div>
+
+    <!-- Wedstrijden -->
+    <div class="panel active" id="panel-matches">
+      <div class="card edit-only">
+        <h3><i class="fa-solid fa-plus"></i> Wedstrijd toevoegen</h3>
+        <div class="form-row">
+          <label>Seizoen</label>
+          <select id="match-season"></select>
+          <button class="btn btn-primary btn-sm" onclick="addSeason()">+ Seizoen</button>
+        </div>
+        <div class="form-row">
+          <label>Competitie</label>
+          <select id="match-comp"></select>
+        </div>
+        <div class="form-row">
+          <label>Speeldag</label>
+          <input type="number" id="match-day" min="1" value="1" style="width:80px">
+        </div>
+        <div class="form-row">
+          <label>Thuis</label>
+          <select id="match-home"></select>
+        </div>
+        <div class="form-row">
+          <label>Score</label>
+          <input type="number" id="score-home" min="0" value="0"> <span style="color:#555">-</span> <input type="number" id="score-away" min="0" value="0">
+        </div>
+        <div class="form-row">
+          <label>Uit</label>
+          <select id="match-away"></select>
+        </div>
+        <div class="form-row">
+          <label>Notitie</label>
+          <textarea id="match-note" placeholder="Hoe was de wedstrijd? (optioneel)"></textarea>
+        </div>
+        <div class="form-row" style="margin-top:8px">
+          <label></label>
+          <button class="btn btn-primary" onclick="addMatch()"><i class="fa-solid fa-plus"></i> Toevoegen</button>
+        </div>
+      </div>
+      <div class="filter-row">
+        <select id="filter-season" onchange="renderMatches()"><option value="">Alle seizoenen</option></select>
+        <select id="filter-comp" onchange="renderMatches()"><option value="">Alle competities</option></select>
+      </div>
+      <div id="matches-list"></div>
+    </div>
+
+    <!-- Klassement -->
+    <div class="panel" id="panel-standings">
+      <div class="card edit-only">
+        <h3><i class="fa-solid fa-trophy"></i> Eindstand opslaan</h3>
+        <div class="form-row">
+          <label>Seizoen</label>
+          <select id="standing-season"></select>
+        </div>
+        <div class="standing-inputs" id="standing-inputs"></div>
+        <div style="margin-top:16px">
+          <button class="btn btn-primary" onclick="saveStanding()"><i class="fa-solid fa-save"></i> Opslaan</button>
+        </div>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:10px">
+        <h3 style="font-size:16px">Overzicht per seizoen</h3>
+        <select id="view-standing-season" onchange="renderStandings()" style="background:#0a0e1a;border:1px solid #1e2a3a;color:#e0e0e0;padding:8px 16px;border-radius:6px;font-size:14px"></select>
+      </div>
+      <div class="standings-grid" id="standings-grid"></div>
+    </div>
+
+    <!-- Stats -->
+    <div class="panel" id="panel-stats">
+      <div class="filter-row">
+        <select id="stats-season" onchange="renderStats()"><option value="">Alle seizoenen</option></select>
+      </div>
+      <div class="stats-grid" id="stats-grid"></div>
+      <h3 style="margin:16px 0 12px;font-size:16px">Recente resultaten</h3>
+      <div id="recent-results"></div>
+    </div>
+
+    <!-- Opstelling -->
+    <div class="panel" id="panel-squad">
+      <div class="card edit-only">
+        <h3><i class="fa-solid fa-users"></i> Selectie beheren</h3>
+        <div class="form-row">
+          <label>Formatie</label>
+          <select id="formation-select" onchange="changeFormation(this.value)">
+            <option>4-3-3</option><option>4-4-2</option><option>4-2-3-1</option><option>3-5-2</option><option>4-1-4-1</option><option>5-3-2</option><option>3-4-3</option>
+          </select>
+        </div>
+        <button class="btn btn-primary btn-sm" onclick="showAddPlayer()"><i class="fa-solid fa-plus"></i> Speler toevoegen</button>
+      </div>
+      <div class="pitch" id="pitch"></div>
+      <h3 style="margin:16px 0 12px;font-size:16px">Bank &amp; reserves</h3>
+      <div class="player-list" id="bench-list"></div>
+    </div>
+
+    <!-- Progressie -->
+    <div class="panel" id="panel-progress">
+      <div class="card edit-only">
+        <h3><i class="fa-solid fa-chart-line"></i> Speler progressie</h3>
+        <div class="form-row"><label>Speler</label><select id="prog-player"></select></div>
+        <div class="form-row"><label>Seizoen</label><select id="prog-season"></select></div>
+        <div class="form-row"><label>Rating</label><input type="number" id="prog-rating" min="1" max="99" placeholder="1-99"></div>
+        <button class="btn btn-primary btn-sm" onclick="addRating()"><i class="fa-solid fa-plus"></i> Rating toevoegen</button>
+      </div>
+      <div class="form-row" style="margin-bottom:12px">
+        <label>Speler</label>
+        <select id="chart-player" onchange="renderChart()"><option value="">Kies een speler</option></select>
+      </div>
+      <div style="background:#111827;border-radius:12px;padding:16px;border:1px solid #1e2a3a;margin-bottom:20px">
+        <canvas id="prog-chart" height="250"></canvas>
+      </div>
+      <h3 style="margin:0 0 12px;font-size:16px">Alle speler ratings</h3>
+      <div id="ratings-overview"></div>
+    </div>
+
+    <!-- Transfers -->
+    <div class="panel" id="panel-transfers">
+      <div class="card edit-only">
+        <h3><i class="fa-solid fa-right-left"></i> Transfer toevoegen</h3>
+        <div class="form-row"><label>Type</label>
+          <select id="tf-type"><option value="buy">Gekocht</option><option value="sell">Verkocht</option><option value="loan-in">Gehuurd</option><option value="loan-out">Verhuurd</option><option value="free">Transfervrij</option></select>
+        </div>
+        <div class="form-row" id="tf-player-input-row"><label>Speler</label><input type="text" id="tf-player" placeholder="Naam speler" style="min-width:200px"></div>
+        <div class="form-row" id="tf-player-select-row" style="display:none"><label>Speler</label><select id="tf-player-select" style="min-width:200px"></select></div>
+        <div class="form-row" id="tf-position-row"><label>Positie</label>
+          <select id="tf-position"><option>GK</option><option>LB</option><option>CB</option><option>RB</option><option>LWB</option><option>RWB</option><option>CDM</option><option>CM</option><option selected>CAM</option><option>LM</option><option>RM</option><option>LW</option><option>RW</option><option>ST</option><option>CF</option></select>
+        </div>
+        <div class="form-row" id="tf-rating-row"><label>Rating</label><input type="number" id="tf-rating" min="1" max="99" placeholder="1-99" style="width:80px"></div>
+        <div class="form-row"><label>Club</label><input type="text" id="tf-club" placeholder="Van/naar welke club" style="min-width:200px"></div>
+        <div class="form-row"><label>Bedrag</label><input type="text" id="tf-fee" placeholder="Bijv. 15M of 2.5M" style="min-width:120px"></div>
+        <div class="form-row"><label>Seizoen</label><select id="tf-season"></select></div>
+        <div class="form-row"><label></label><button class="btn btn-primary" onclick="addTransfer()"><i class="fa-solid fa-plus"></i> Toevoegen</button></div>
+      </div>
+      <div class="filter-row">
+        <select id="tf-filter-season" onchange="renderTransfers()"><option value="">Alle seizoenen</option></select>
+        <select id="tf-filter-type" onchange="renderTransfers()"><option value="">Alle types</option><option value="buy">Gekocht</option><option value="sell">Verkocht</option><option value="loan-in">Gehuurd</option><option value="loan-out">Verhuurd</option><option value="free">Transfervrij</option></select>
+      </div>
+      <div class="stats-grid" id="tf-stats"></div>
+      <h3 style="margin:12px 0;font-size:16px">Inkomend</h3>
+      <div id="tf-list-in"></div>
+      <h3 style="margin:16px 0 12px;font-size:16px">Uitgaand</h3>
+      <div id="tf-list-out"></div>
+    </div>
+
+    <!-- Teams -->
+    <div class="panel" id="panel-teams">
+      <div class="card edit-only">
+        <h3><i class="fa-solid fa-shield-halved"></i> Team toevoegen</h3>
+        <div class="form-row"><label>Naam</label><input type="text" id="team-name" placeholder="Bijv. Ajax" style="min-width:200px"></div>
+        <div class="form-row">
+          <label>Logo</label>
+          <input type="file" id="team-logo-file" accept="image/*" style="font-size:13px;color:#888">
+          <span style="font-size:12px;color:#555">of</span>
+          <input type="text" id="team-logo" placeholder="URL (optioneel)" style="min-width:160px">
+        </div>
+        <div class="form-row" id="logo-preview-row" style="display:none"><label></label><div id="logo-preview" style="width:40px;height:40px;border-radius:50%;overflow:hidden;border:1px solid #1e2a3a"></div></div>
+        <div class="form-row"><label>Kleur</label><input type="color" id="team-color" value="#0088ff"></div>
+        <div class="form-row"><label></label><button class="btn btn-primary" onclick="addTeam()"><i class="fa-solid fa-plus"></i> Toevoegen</button></div>
+      </div>
+      <div id="teams-list" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Modals -->
+<div class="modal-overlay" id="player-modal">
+  <div class="modal">
+    <h3><i class="fa-solid fa-user-plus"></i> Speler toevoegen</h3>
+    <div class="form-row"><label>Naam</label><input type="text" id="pl-name" placeholder="Naam" style="flex:1"></div>
+    <div class="form-row"><label>Positie</label><select id="pl-position" style="flex:1"><option>GK</option><option>LB</option><option>CB</option><option>RB</option><option>LWB</option><option>RWB</option><option>CDM</option><option>CM</option><option>CAM</option><option>LM</option><option>RM</option><option>LW</option><option>RW</option><option>ST</option><option>CF</option></select></div>
+    <div class="form-row"><label>Rating</label><input type="number" id="pl-rating" min="1" max="99" placeholder="1-99" style="width:80px"></div>
+    <div class="form-row"><label>Foto</label><input type="file" id="pl-photo" accept="image/*" style="font-size:13px;color:#888;flex:1"></div>
+    <div class="form-row"><label>Starter?</label><select id="pl-starter" style="flex:1"><option value="1">Ja - basiself</option><option value="0">Nee - bank</option></select></div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px">
+      <button class="btn btn-outline" onclick="closeModal('player-modal')">Annuleren</button>
+      <button class="btn btn-primary" onclick="savePlayer()">Opslaan</button>
+    </div>
+  </div>
+</div>
+<div class="modal-overlay" id="career-modal">
+  <div class="modal">
+    <h3><i class="fa-solid fa-plus"></i> Nieuwe career mode</h3>
+    <div class="form-row"><label>Naam</label><input type="text" id="cm-name" placeholder="Bijv. Telstar Career" style="flex:1"></div>
+    <div class="form-row"><label>Team</label><select id="cm-team" style="flex:1"></select></div>
+    <div class="form-row"><label>Land</label><select id="cm-country" style="flex:1"><option value="nl">Nederland</option><option value="en">Engeland</option><option value="de">Duitsland</option><option value="fr">Frankrijk</option><option value="es">Spanje</option><option value="it">Italie</option></select></div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px">
+      <button class="btn btn-outline" onclick="closeModal('career-modal')">Annuleren</button>
+      <button class="btn btn-primary" onclick="saveCareer()">Aanmaken</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ============================================
+// FIREBASE CONFIG HIER - vul jouw waardes in!
+// ============================================
+const firebaseConfig = {
+  apiKey: "AIzaSyCRRM0fvuqZn12SOKFH19ynEvPl9iTm6qE",
+  authDomain: "fc26-tracker-d0dc1.firebaseapp.com",
+  databaseURL: "https://fc26-tracker-d0dc1-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "fc26-tracker-d0dc1",
+  storageBucket: "fc26-tracker-d0dc1.firebasestorage.app",
+  messagingSenderId: "544027667953",
+  appId: "1:544027667953:web:9de9ad4f2afc178a042850",
+  measurementId: "G-0V811HBRHY"
+};
+
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+const auth = firebase.auth();
+
+// ============================================
+// GAME DATA (same as 1.0)
+// ============================================
+const LEAGUES = {
+  nl: { name:'Nederland',comps:['Eredivisie','Eerste Divisie','KNVB Beker','Europa League','Conference League','Champions League','Johan Cruijff Schaal'],trophies:[{id:'league',label:'Eredivisie',type:'pos',max:18},{id:'cup',label:'KNVB Beker',type:'round'},{id:'super',label:'Johan Cruijff Schaal',type:'final'},{id:'europa',label:'Europa League',type:'round'},{id:'conference',label:'Conference League',type:'round'},{id:'cl',label:'Champions League',type:'round'}]},
+  en: { name:'Engeland',comps:['Premier League','Championship','League One','League Two','FA Cup','EFL Cup','Community Shield','Europa League','Conference League','Champions League'],trophies:[{id:'league',label:'Competitie',type:'pos',max:24},{id:'facup',label:'FA Cup',type:'round'},{id:'eflcup',label:'EFL Cup',type:'round'},{id:'shield',label:'Community Shield',type:'final'},{id:'europa',label:'Europa League',type:'round'},{id:'conference',label:'Conference League',type:'round'},{id:'cl',label:'Champions League',type:'round'}]},
+  de: { name:'Duitsland',comps:['Bundesliga','2. Bundesliga','DFB-Pokal','DFL-Supercup','Europa League','Conference League','Champions League'],trophies:[{id:'league',label:'Competitie',type:'pos',max:18},{id:'cup',label:'DFB-Pokal',type:'round'},{id:'super',label:'DFL-Supercup',type:'final'},{id:'europa',label:'Europa League',type:'round'},{id:'conference',label:'Conference League',type:'round'},{id:'cl',label:'Champions League',type:'round'}]},
+  fr: { name:'Frankrijk',comps:['Ligue 1','Ligue 2','Coupe de France','Trophee des Champions','Europa League','Conference League','Champions League'],trophies:[{id:'league',label:'Competitie',type:'pos',max:20},{id:'cup',label:'Coupe de France',type:'round'},{id:'super',label:'Trophee des Champions',type:'final'},{id:'europa',label:'Europa League',type:'round'},{id:'conference',label:'Conference League',type:'round'},{id:'cl',label:'Champions League',type:'round'}]},
+  es: { name:'Spanje',comps:['La Liga','Segunda Division','Copa del Rey','Supercopa','Europa League','Conference League','Champions League'],trophies:[{id:'league',label:'Competitie',type:'pos',max:20},{id:'cup',label:'Copa del Rey',type:'round'},{id:'super',label:'Supercopa',type:'final'},{id:'europa',label:'Europa League',type:'round'},{id:'conference',label:'Conference League',type:'round'},{id:'cl',label:'Champions League',type:'round'}]},
+  it: { name:'Italie',comps:['Serie A','Serie B','Coppa Italia','Supercoppa','Europa League','Conference League','Champions League'],trophies:[{id:'league',label:'Competitie',type:'pos',max:20},{id:'cup',label:'Coppa Italia',type:'round'},{id:'super',label:'Supercoppa',type:'final'},{id:'europa',label:'Europa League',type:'round'},{id:'conference',label:'Conference League',type:'round'},{id:'cl',label:'Champions League',type:'round'}]}
+};
+const ROUND_OPTIONS = ['Winnaar','Finalist','Halve finale','Kwartfinale','Achtste finale','Groepsfase','Niet deelgenomen'];
+const FINAL_OPTIONS = ['Winnaar','Verliezer','Niet deelgenomen'];
+const FORMATIONS = {
+  '4-3-3':[{p:'GK',x:50,y:92},{p:'LB',x:15,y:75},{p:'CB',x:37,y:78},{p:'CB',x:63,y:78},{p:'RB',x:85,y:75},{p:'CM',x:30,y:55},{p:'CM',x:50,y:50},{p:'CM',x:70,y:55},{p:'LW',x:18,y:25},{p:'ST',x:50,y:18},{p:'RW',x:82,y:25}],
+  '4-4-2':[{p:'GK',x:50,y:92},{p:'LB',x:15,y:75},{p:'CB',x:37,y:78},{p:'CB',x:63,y:78},{p:'RB',x:85,y:75},{p:'LM',x:15,y:50},{p:'CM',x:38,y:52},{p:'CM',x:62,y:52},{p:'RM',x:85,y:50},{p:'ST',x:37,y:20},{p:'ST',x:63,y:20}],
+  '4-2-3-1':[{p:'GK',x:50,y:92},{p:'LB',x:15,y:75},{p:'CB',x:37,y:78},{p:'CB',x:63,y:78},{p:'RB',x:85,y:75},{p:'CDM',x:38,y:58},{p:'CDM',x:62,y:58},{p:'LW',x:18,y:38},{p:'CAM',x:50,y:35},{p:'RW',x:82,y:38},{p:'ST',x:50,y:18}],
+  '3-5-2':[{p:'GK',x:50,y:92},{p:'CB',x:25,y:78},{p:'CB',x:50,y:80},{p:'CB',x:75,y:78},{p:'LWB',x:10,y:55},{p:'CM',x:33,y:52},{p:'CM',x:50,y:48},{p:'CM',x:67,y:52},{p:'RWB',x:90,y:55},{p:'ST',x:37,y:20},{p:'ST',x:63,y:20}],
+  '4-1-4-1':[{p:'GK',x:50,y:92},{p:'LB',x:15,y:75},{p:'CB',x:37,y:78},{p:'CB',x:63,y:78},{p:'RB',x:85,y:75},{p:'CDM',x:50,y:60},{p:'LM',x:15,y:42},{p:'CM',x:38,y:44},{p:'CM',x:62,y:44},{p:'RM',x:85,y:42},{p:'ST',x:50,y:18}],
+  '5-3-2':[{p:'GK',x:50,y:92},{p:'LWB',x:10,y:68},{p:'CB',x:30,y:78},{p:'CB',x:50,y:80},{p:'CB',x:70,y:78},{p:'RWB',x:90,y:68},{p:'CM',x:30,y:50},{p:'CM',x:50,y:48},{p:'CM',x:70,y:50},{p:'ST',x:37,y:20},{p:'ST',x:63,y:20}],
+  '3-4-3':[{p:'GK',x:50,y:92},{p:'CB',x:25,y:78},{p:'CB',x:50,y:80},{p:'CB',x:75,y:78},{p:'LM',x:15,y:52},{p:'CM',x:38,y:55},{p:'CM',x:62,y:55},{p:'RM',x:85,y:52},{p:'LW',x:20,y:25},{p:'ST',x:50,y:18},{p:'RW',x:80,y:25}]
+};
+const defaultTeams = [
+  {name:"Ajax",color:"#D2122E",logo:""},{name:"PSV",color:"#ED1C24",logo:""},{name:"Feyenoord",color:"#EE1C25",logo:""},
+  {name:"AZ",color:"#CC0000",logo:""},{name:"FC Twente",color:"#E30613",logo:""},{name:"FC Utrecht",color:"#D50032",logo:""},
+  {name:"Vitesse",color:"#FFD700",logo:""},{name:"sc Heerenveen",color:"#0051A5",logo:""},{name:"Willem II",color:"#D4213D",logo:""},
+  {name:"Sparta Rotterdam",color:"#E30613",logo:""},{name:"NEC",color:"#009A44",logo:""},{name:"Go Ahead Eagles",color:"#E30613",logo:""},
+  {name:"Heracles Almelo",color:"#000000",logo:""},{name:"FC Groningen",color:"#00A651",logo:""},{name:"RKC Waalwijk",color:"#FFD700",logo:""},
+  {name:"Fortuna Sittard",color:"#008751",logo:""},{name:"PEC Zwolle",color:"#003DA5",logo:""},{name:"Almere City FC",color:"#E30613",logo:""},
+  {name:"NAC Breda",color:"#FFD700",logo:""},{name:"Excelsior",color:"#E30613",logo:""},{name:"Telstar",color:"#FFFFFF",logo:""},
+  {name:"Real Madrid",color:"#FEBE10",logo:""},{name:"FC Barcelona",color:"#A50044",logo:""},{name:"Man City",color:"#6CABDD",logo:""},
+  {name:"Liverpool",color:"#C8102E",logo:""},{name:"Bayern München",color:"#DC052D",logo:""},{name:"Paris SG",color:"#004170",logo:""},
+  {name:"Juventus",color:"#000000",logo:""},{name:"AC Milan",color:"#FB090B",logo:""},{name:"Inter Milan",color:"#010E80",logo:""},
+  {name:"Borussia Dortmund",color:"#FDE100",logo:""},{name:"Arsenal",color:"#EF0107",logo:""},{name:"Chelsea",color:"#034694",logo:""},
+  {name:"Man United",color:"#DA291C",logo:""},{name:"Atlético Madrid",color:"#CB3524",logo:""},{name:"Benfica",color:"#FF0000",logo:""},
+  {name:"Porto",color:"#003399",logo:""},{name:"Tottenham",color:"#132257",logo:""},{name:"Napoli",color:"#004A8D",logo:""},
+  {name:"AS Roma",color:"#8E1F2F",logo:""},{name:"Lazio",color:"#87D8F7",logo:""},{name:"Marseille",color:"#2FAEE0",logo:""},
+  {name:"Lyon",color:"#003DA5",logo:""},{name:"Monaco",color:"#E30613",logo:""},{name:"Sevilla",color:"#F43333",logo:""},
+  {name:"Real Sociedad",color:"#003DA5",logo:""},{name:"Villarreal",color:"#FFE114",logo:""},{name:"RB Leipzig",color:"#DD0741",logo:""},
+  {name:"Bayer Leverkusen",color:"#E32221",logo:""},{name:"Aston Villa",color:"#670E36",logo:""},{name:"Newcastle",color:"#241F20",logo:""},
+  {name:"Brighton",color:"#0057B8",logo:""},{name:"West Ham",color:"#7A263A",logo:""},{name:"Wolverhampton",color:"#FDB913",logo:""},
+  {name:"Leeds United",color:"#FFFFFF",logo:""},{name:"Sheffield United",color:"#EE2737",logo:""},{name:"Burnley",color:"#6C1D45",logo:""},
+  {name:"Sunderland",color:"#EB172B",logo:""},{name:"Norwich City",color:"#00A650",logo:""},{name:"Ipswich Town",color:"#0044AA",logo:""}
+];
+
+// ============================================
+// STATE
+// ============================================
+let data = { teams: defaultTeams, careers: [], activeCareerId: null };
+let career = null;
+let currentUserId = null;
+let currentUserName = '';
+let viewingUserId = null;
+let viewingUserName = '';
+let isViewingFriend = false;
+let saveTimeout = null;
+
+// ============================================
+// FIREBASE AUTH & DATA
+// ============================================
+function doLogin() {
+  const name = document.getElementById('login-name').value.trim();
+  if (!name) return alert('Vul je naam in');
+  localStorage.setItem('fc26_username', name);
+  auth.signInAnonymously().catch(e => alert('Login mislukt: ' + e.message));
+}
+
+function doLogout() {
+  localStorage.removeItem('fc26_username');
+  auth.signOut();
+  document.getElementById('login-screen').style.display = '';
+  document.getElementById('main-app').style.display = 'none';
+}
+
+auth.onAuthStateChanged(async user => {
+  if (!user) {
+    document.getElementById('login-screen').style.display = '';
+    document.getElementById('main-app').style.display = 'none';
+    return;
+  }
+  const name = localStorage.getItem('fc26_username');
+  if (!name) { document.getElementById('login-screen').style.display = ''; document.getElementById('main-app').style.display = 'none'; return; }
+
+  currentUserId = user.uid;
+  currentUserName = name;
+  document.getElementById('display-name').textContent = name;
+  document.getElementById('login-screen').style.display = 'none';
+  document.getElementById('main-app').style.display = '';
+
+  await db.collection('users').doc(currentUserId).set({ name, lastSeen: firebase.firestore.FieldValue.serverTimestamp() }, { merge: true });
+
+  const doc = await db.collection('users').doc(currentUserId).collection('data').doc('main').get();
+  if (doc.exists) {
+    data = doc.data();
+    if (!data.teams || !data.teams.length) data.teams = defaultTeams;
+    if (!data.careers) data.careers = [];
+  } else {
+    data = { teams: defaultTeams, careers: [], activeCareerId: null };
+    await saveToFirebase();
+  }
+
+  if (data.activeCareerId) career = data.careers.find(c => c.id === data.activeCareerId) || null;
+  initApp();
+  setSyncStatus('Gesynchroniseerd');
+});
+
+async function saveToFirebase() {
+  if (!currentUserId || isViewingFriend) return;
+  setSyncStatus('Opslaan...');
+  try {
+    await db.collection('users').doc(currentUserId).collection('data').doc('main').set(data);
+    setSyncStatus('Gesynchroniseerd');
+  } catch(e) {
+    setSyncStatus('Fout bij opslaan!');
+    console.error(e);
+  }
+}
+
+function save() {
+  if (isViewingFriend) return;
+  clearTimeout(saveTimeout);
+  saveTimeout = setTimeout(saveToFirebase, 500);
+}
+
+function setSyncStatus(msg) {
+  document.getElementById('sync-status').textContent = msg;
+}
+
+// ============================================
+// VIEWING FRIENDS
+// ============================================
+async function loadFriends() {
+  const el = document.getElementById('friends-list');
+  el.innerHTML = '<div class="no-data">Laden...</div>';
+  try {
+    const snap = await db.collection('users').get();
+    let html = '';
+    snap.forEach(doc => {
+      const u = doc.data();
+      if (doc.id === currentUserId) return;
+      html += `<div class="friend-card" onclick="viewFriend('${doc.id}','${(u.name||'').replace(/'/g,"\\'")}')">
+        <div class="friend-name"><i class="fa-solid fa-user" style="margin-right:8px;color:#0088ff"></i>${u.name||'Onbekend'}</div>
+        <div class="friend-detail">Tik om career modes te bekijken</div>
+      </div>`;
+    });
+    el.innerHTML = html || '<div class="no-data">Geen andere gebruikers gevonden. Deel de link met je vriend!</div>';
+  } catch(e) {
+    el.innerHTML = '<div class="no-data">Kon vrienden niet laden</div>';
+  }
+}
+
+async function viewFriend(uid, name) {
+  setSyncStatus('Data laden van ' + name + '...');
+  try {
+    const doc = await db.collection('users').doc(uid).collection('data').doc('main').get();
+    if (!doc.exists) { alert('Geen data gevonden'); return; }
+    viewingUserId = uid;
+    viewingUserName = name;
+    isViewingFriend = true;
+    data = doc.data();
+    if (!data.teams) data.teams = defaultTeams;
+    if (!data.careers) data.careers = [];
+    career = data.activeCareerId ? data.careers.find(c => c.id === data.activeCareerId) || null : null;
+
+    document.getElementById('viewing-banner').style.display = '';
+    document.getElementById('viewing-name').textContent = name;
+    document.querySelectorAll('.edit-only').forEach(el => el.style.display = 'none');
+    refreshAll();
+    renderTeams();
+    setSyncStatus('Bekijkt data van ' + name);
+
+    document.querySelector('.tab.active').classList.remove('active');
+    document.querySelectorAll('.panel.active').forEach(p => p.classList.remove('active'));
+    document.querySelector('[data-tab="matches"]').classList.add('active');
+    document.getElementById('panel-matches').classList.add('active');
+  } catch(e) {
+    alert('Kon data niet laden');
+  }
+}
+
+async function stopViewing() {
+  isViewingFriend = false;
+  viewingUserId = null;
+  document.getElementById('viewing-banner').style.display = 'none';
+  document.querySelectorAll('.edit-only').forEach(el => el.style.display = '');
+
+  const doc = await db.collection('users').doc(currentUserId).collection('data').doc('main').get();
+  if (doc.exists) {
+    data = doc.data();
+    if (!data.teams) data.teams = defaultTeams;
+    if (!data.careers) data.careers = [];
+  }
+  career = data.activeCareerId ? data.careers.find(c => c.id === data.activeCareerId) || null : null;
+  refreshAll();
+  renderTeams();
+  setSyncStatus('Gesynchroniseerd');
+}
+
+// ============================================
+// ALL THE SAME LOGIC AS 1.0
+// ============================================
+function getInitials(n){return n.split(' ').filter(w=>w.length>1&&w[0]===w[0].toUpperCase()).map(w=>w[0]).join('').slice(0,3)||n.slice(0,2).toUpperCase();}
+function teamLogo(name,size){const s=size||32;const team=data.teams.find(t=>t.name===name);if(!team)return`<div class="team-logo" style="width:${s}px;height:${s}px">${(name||'?').slice(0,2)}</div>`;if(team.logo)return`<div class="team-logo" style="width:${s}px;height:${s}px"><img src="${team.logo}" alt="${name}"></div>`;return`<div class="team-logo" style="width:${s}px;height:${s}px;background:${team.color};color:#fff;font-size:${Math.round(s/3)}px">${getInitials(name)}</div>`;}
+function teamLogoSm(name){const team=data.teams.find(t=>t.name===name);if(!team)return`<div class="team-logo-sm">${(name||'').slice(0,2)}</div>`;if(team.logo)return`<div class="team-logo-sm"><img src="${team.logo}"></div>`;return`<div class="team-logo-sm" style="background:${team.color};color:#fff">${getInitials(name)}</div>`;}
+function showModal(id){document.getElementById(id).classList.add('show');}
+function closeModal(id){document.getElementById(id).classList.remove('show');}
+function getLeague(){return career?LEAGUES[career.country]:LEAGUES.nl;}
+
+function renderCareerBar(){const bar=document.getElementById('career-bar');const deleteBtn=isViewingFriend?'':`<i class="fa-solid fa-xmark" style="font-size:10px;margin-left:4px;opacity:0.5" onclick="event.stopPropagation();deleteCareer('\${c.id}')" title="Verwijderen"></i>`;bar.innerHTML=data.careers.map(c=>`<div class="career-chip ${c.id===data.activeCareerId?'active':''}" onclick="switchCareer('${c.id}')">${teamLogoSm(c.team)} ${c.name}${isViewingFriend?'':`<i class="fa-solid fa-xmark" style="font-size:10px;margin-left:4px;opacity:0.5" onclick="event.stopPropagation();deleteCareer('${c.id}')" title="Verwijderen"></i>`}</div>`).join('')+(isViewingFriend?'':`<div class="career-chip" onclick="showModal('career-modal');populateCareerModal()"><i class="fa-solid fa-plus"></i> Nieuwe career</div>`);}
+
+function switchCareer(id){data.activeCareerId=id;career=data.careers.find(c=>c.id===id)||null;save();renderCareerBar();refreshAll();}
+function deleteCareer(id){if(isViewingFriend||!confirm('Career mode verwijderen?'))return;data.careers=data.careers.filter(c=>c.id!==id);if(data.activeCareerId===id){data.activeCareerId=data.careers[0]?.id||null;career=data.careers[0]||null;}save();renderCareerBar();refreshAll();}
+function populateCareerModal(){const el=document.getElementById('cm-team');const sorted=[...data.teams].sort((a,b)=>a.name.localeCompare(b.name));el.innerHTML=sorted.map(t=>`<option>${t.name}</option>`).join('');}
+function saveCareer(){const name=document.getElementById('cm-name').value.trim();const team=document.getElementById('cm-team').value;const country=document.getElementById('cm-country').value;if(!name)return alert('Vul een naam in');const c={id:'c'+Date.now(),name,team,country,seasons:['24/25'],matches:[],standings:{},players:[],formation:'4-3-3',ratings:{}};data.careers.push(c);data.activeCareerId=c.id;career=c;save();closeModal('career-modal');document.getElementById('cm-name').value='';renderCareerBar();refreshAll();}
+
+function populateSeasons(){if(!career)return;['match-season','filter-season','standing-season','view-standing-season','stats-season','prog-season','tf-season','tf-filter-season'].forEach(id=>{const el=document.getElementById(id);if(!el)return;const val=el.value;const isFilter=id.startsWith('filter')||id.startsWith('view')||id.startsWith('stats')||id==='tf-filter-season';el.innerHTML=isFilter?'<option value="">Alle seizoenen</option>':'';career.seasons.forEach(s=>el.innerHTML+=`<option>${s}</option>`);if(val)el.value=val;});}
+function populateComps(){const league=getLeague();['match-comp','filter-comp'].forEach(id=>{const el=document.getElementById(id);if(!el)return;const val=el.value;const isFilter=id.startsWith('filter');el.innerHTML=isFilter?'<option value="">Alle competities</option>':'';league.comps.forEach(c=>el.innerHTML+=`<option>${c}</option>`);if(val)el.value=val;});}
+function populateTeamSelects(){const sorted=[...data.teams].sort((a,b)=>a.name.localeCompare(b.name));['match-home','match-away'].forEach(id=>{const el=document.getElementById(id);if(!el)return;const val=el.value;el.innerHTML=sorted.map(t=>`<option>${t.name}</option>`).join('');if(career)el.value=val||career.team;});}
+function populateStandingInputs(){const league=getLeague();const el=document.getElementById('standing-inputs');el.innerHTML=league.trophies.map(t=>{if(t.type==='pos')return`<div class="standing-input"><label>${t.label}</label><input type="number" id="pos-${t.id}" min="1" max="${t.max}" placeholder="Positie (1-${t.max})"></div>`;if(t.type==='round')return`<div class="standing-input"><label>${t.label}</label><select id="pos-${t.id}"><option value="">-- Kies --</option>${ROUND_OPTIONS.map(o=>`<option>${o}</option>`).join('')}</select></div>`;return`<div class="standing-input"><label>${t.label}</label><select id="pos-${t.id}"><option value="">-- Kies --</option>${FINAL_OPTIONS.map(o=>`<option>${o}</option>`).join('')}</select></div>`;}).join('');}
+function populatePlayers(){if(!career)return;['prog-player','chart-player'].forEach(id=>{const el=document.getElementById(id);if(!el)return;const val=el.value;const isChart=id==='chart-player';el.innerHTML=isChart?'<option value="">Kies een speler</option>':'';career.players.sort((a,b)=>a.name.localeCompare(b.name)).forEach(p=>el.innerHTML+=`<option value="${p.id}">${p.name} (${p.position})</option>`);if(val)el.value=val;});}
+
+function nextSeasonName(current){const m=current.match(/(\d{2})\/(\d{2})/);if(m){const a=parseInt(m[2]),b=a+1;return`${String(a).padStart(2,'0')}/${String(b%100).padStart(2,'0')}`;}return null;}
+function addSeason(){if(!career||isViewingFriend)return;const last=career.seasons[career.seasons.length-1];const next=nextSeasonName(last);const name=next||prompt('Seizoen naam (bijv. 25/26):');if(name&&!career.seasons.includes(name)){career.seasons.push(name);save();populateSeasons();document.getElementById('match-season').value=name;document.getElementById('match-day').value=1;}}
+
+function addMatch(){if(!career||isViewingFriend)return;const m={season:document.getElementById('match-season').value,comp:document.getElementById('match-comp').value,day:parseInt(document.getElementById('match-day').value)||1,home:document.getElementById('match-home').value,away:document.getElementById('match-away').value,homeScore:parseInt(document.getElementById('score-home').value)||0,awayScore:parseInt(document.getElementById('score-away').value)||0,note:document.getElementById('match-note').value.trim(),id:Date.now()};if(m.home===m.away)return alert('Thuis en uit mogen niet hetzelfde zijn');career.matches.unshift(m);save();document.getElementById('match-day').value=parseInt(document.getElementById('match-day').value)+1;document.getElementById('match-note').value='';renderMatches();}
+function deleteMatch(id){if(!career||isViewingFriend)return;career.matches=career.matches.filter(m=>m.id!==id);save();renderMatches();}
+function toggleNote(id){const el=document.getElementById('note-'+id);if(el)el.classList.toggle('show');}
+
+function renderMatches(){const el=document.getElementById('matches-list');if(!career){el.innerHTML='<div class="no-data">Maak eerst een career mode aan</div>';return;}const fs=document.getElementById('filter-season').value;const fc=document.getElementById('filter-comp').value;let matches=career.matches;if(fs)matches=matches.filter(m=>m.season===fs);if(fc)matches=matches.filter(m=>m.comp===fc);if(!matches.length){el.innerHTML='<div class="no-data">Nog geen wedstrijden</div>';return;}el.innerHTML=matches.map(m=>{const isMyHome=m.home===career.team;const isMyAway=m.away===career.team;const myGoals=isMyHome?m.homeScore:m.awayScore;const theirGoals=isMyHome?m.awayScore:m.homeScore;const resultColor=(isMyHome||isMyAway)?(myGoals>theirGoals?'#4CAF50':myGoals<theirGoals?'#f44336':'#FF9800'):'#fff';return`<div class="match-card" onclick="toggleNote(${m.id})"><div class="match-top"><div class="match-teams"><div class="match-team">${teamLogo(m.home)}<span>${m.home}</span></div><div class="match-score" style="color:${resultColor}">${m.homeScore} - ${m.awayScore}</div><div class="match-team away">${teamLogo(m.away)}<span>${m.away}</span></div></div><div class="match-meta"><div class="match-comp">${m.comp}</div><div>SD ${m.day} | ${m.season}</div></div></div>${m.note?`<div class="match-note" id="note-${m.id}"><i class="fa-solid fa-comment" style="margin-right:6px"></i>${m.note}</div>`:''}<div class="match-expand"><div class="note-hint">${m.note?'<i class="fa-solid fa-comment"></i> Tik voor notitie':''}</div>${isViewingFriend?'':`<button class="btn btn-danger btn-sm" onclick="event.stopPropagation();deleteMatch(${m.id})"><i class="fa-solid fa-trash"></i></button>`}</div></div>`;}).join('');}
+
+function saveStanding(){if(!career||isViewingFriend)return;const season=document.getElementById('standing-season').value;if(!season)return;const league=getLeague();const st={};league.trophies.forEach(t=>{st[t.id]=document.getElementById('pos-'+t.id)?.value||'';});career.standings[season]=st;const next=nextSeasonName(season);if(next&&!career.seasons.includes(next)){career.seasons.push(next);populateSeasons();document.getElementById('match-season').value=next;document.getElementById('match-day').value=1;}save();renderStandings();alert('Opgeslagen!');}
+function posClass(val){if(val==='Winnaar'||val==='1')return'gold';if(val==='Finalist'||val==='2')return'silver';if(val==='Halve finale'||val==='3')return'bronze';return'';}
+function renderStandings(){const el=document.getElementById('standings-grid');if(!career){el.innerHTML='<div class="no-data">Maak eerst een career mode aan</div>';return;}const season=document.getElementById('view-standing-season').value;const league=getLeague();const seasonsToShow=season?[season]:career.seasons;let html='';seasonsToShow.forEach(s=>{const st=career.standings[s];if(!st)return;html+=`<div style="grid-column:1/-1;font-size:16px;font-weight:600;margin-top:12px;color:#0088ff">${s}</div>`;html+=league.trophies.map(t=>{const val=st[t.id];const display=t.type==='pos'&&val?`#${val}`:val||'-';return`<div class="standing-card"><h4>${t.label}</h4><div class="position ${posClass(val)}">${display}</div></div>`;}).join('');});if(!html)html='<div class="no-data">Nog geen klassementen opgeslagen</div>';el.innerHTML=html;}
+
+function renderStats(){if(!career){document.getElementById('stats-grid').innerHTML='';document.getElementById('recent-results').innerHTML='<div class="no-data">Maak eerst een career mode aan</div>';return;}const season=document.getElementById('stats-season').value;let matches=career.matches;if(season)matches=matches.filter(m=>m.season===season);const myMatches=matches.filter(m=>m.home===career.team||m.away===career.team);let wins=0,draws=0,losses=0,gf=0,ga=0;myMatches.forEach(m=>{const isHome=m.home===career.team;const my=isHome?m.homeScore:m.awayScore,their=isHome?m.awayScore:m.homeScore;gf+=my;ga+=their;if(my>their)wins++;else if(my<their)losses++;else draws++;});document.getElementById('stats-grid').innerHTML=`<div class="stat-card"><div class="value">${myMatches.length}</div><div class="label">Wedstrijden</div></div><div class="stat-card"><div class="value" style="color:#4CAF50">${wins}</div><div class="label">Gewonnen</div></div><div class="stat-card"><div class="value" style="color:#FF9800">${draws}</div><div class="label">Gelijk</div></div><div class="stat-card"><div class="value" style="color:#f44336">${losses}</div><div class="label">Verloren</div></div><div class="stat-card"><div class="value">${gf}</div><div class="label">Goals voor</div></div><div class="stat-card"><div class="value">${ga}</div><div class="label">Goals tegen</div></div>`;const recent=myMatches.slice(0,5);document.getElementById('recent-results').innerHTML=recent.length?recent.map(m=>`<div class="match-card" style="margin-bottom:6px;cursor:default"><div class="match-top"><div class="match-teams"><div class="match-team">${teamLogo(m.home)}<span>${m.home}</span></div><div class="match-score">${m.homeScore} - ${m.awayScore}</div><div class="match-team away">${teamLogo(m.away)}<span>${m.away}</span></div></div><div class="match-meta"><div class="match-comp">${m.comp}</div><div>${m.season}</div></div></div></div>`).join(''):'<div class="no-data">Geen wedstrijden</div>';}
+
+function showAddPlayer(){if(!career||isViewingFriend)return;document.getElementById('pl-name').value='';document.getElementById('pl-rating').value='';document.getElementById('pl-photo').value='';showModal('player-modal');}
+function resizeImg(file,cb){const reader=new FileReader();reader.onload=function(ev){const img=new Image();img.onload=function(){const c=document.createElement('canvas'),s=128;c.width=s;c.height=s;const ctx=c.getContext('2d'),sc=Math.max(s/img.width,s/img.height),w=img.width*sc,h=img.height*sc;ctx.drawImage(img,(s-w)/2,(s-h)/2,w,h);cb(c.toDataURL('image/jpeg',0.7));};img.src=ev.target.result;};reader.readAsDataURL(file);}
+function savePlayer(){if(!career||isViewingFriend)return;const name=document.getElementById('pl-name').value.trim();if(!name)return alert('Vul een naam in');const position=document.getElementById('pl-position').value;const rating=parseInt(document.getElementById('pl-rating').value)||70;const starter=document.getElementById('pl-starter').value==='1';const file=document.getElementById('pl-photo').files[0];function finish(photo){const p={id:'p'+Date.now(),name,position,rating,starter,photo:photo||''};career.players.push(p);if(!career.ratings)career.ratings={};if(!career.ratings[p.id])career.ratings[p.id]=[];if(career.seasons.length)career.ratings[p.id].push({season:career.seasons[0],rating});save();closeModal('player-modal');renderFormation();populatePlayers();}if(file)resizeImg(file,finish);else finish('');}
+function deletePlayer(id){if(!career||isViewingFriend||!confirm('Speler verwijderen?'))return;career.players=career.players.filter(p=>p.id!==id);if(career.ratings)delete career.ratings[id];save();renderFormation();populatePlayers();}
+function changePlayerPhoto(id){if(isViewingFriend)return;const input=document.createElement('input');input.type='file';input.accept='image/*';input.onchange=function(e){const file=e.target.files[0];if(!file)return;resizeImg(file,function(d){const p=career.players.find(x=>x.id===id);if(p){p.photo=d;save();renderFormation();}});};input.click();}
+
+let openMenuId=null;
+document.addEventListener('click',function(e){if(openMenuId&&!e.target.closest('.player-menu')&&!e.target.closest('.pitch-player')){openMenuId=null;renderFormation();}});
+function showPlayerMenu(id,e){if(isViewingFriend)return;e.stopPropagation();openMenuId=openMenuId===id?null:id;renderFormation();}
+function assignPlayerToSpot(playerId,spotIndex){if(!career||isViewingFriend)return;const p=career.players.find(x=>x.id===playerId);if(!p)return;const prev=career.players.find(x=>x.spotIndex===spotIndex&&x.id!==playerId&&x.starter);if(prev)prev.spotIndex=-1;p.starter=true;p.spotIndex=spotIndex;openMenuId=null;save();renderFormation();}
+function movePlayerToSpot(playerId){if(!career||isViewingFriend)return;const form=career.formation||'4-3-3';const spots=FORMATIONS[form]||FORMATIONS['4-3-3'];const assigned=getSpotAssignments();let html='<div class="modal"><h3>Kies een positie</h3><div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px">';spots.forEach((spot,i)=>{const current=assigned[i];const label=current?`${spot.p} (${current.name})`:spot.p;html+=`<button class="btn btn-outline btn-sm" style="text-align:center" onclick="assignPlayerToSpot('${playerId}',${i});closeModal('spot-picker')">${label}</button>`;});html+='</div><div style="margin-top:12px;text-align:right"><button class="btn btn-outline btn-sm" onclick="closeModal(\'spot-picker\')">Annuleren</button></div></div>';let overlay=document.getElementById('spot-picker');if(!overlay){overlay=document.createElement('div');overlay.id='spot-picker';overlay.className='modal-overlay';document.body.appendChild(overlay);}overlay.innerHTML=html;overlay.classList.add('show');openMenuId=null;}
+
+function getSpotAssignments(){if(!career)return{};const form=career.formation||'4-3-3';const spots=FORMATIONS[form]||FORMATIONS['4-3-3'];const starters=career.players.filter(p=>p.starter);const assigned={};const used=new Set();starters.filter(p=>typeof p.spotIndex==='number'&&p.spotIndex>=0&&p.spotIndex<spots.length).forEach(p=>{if(!assigned[p.spotIndex]){assigned[p.spotIndex]=p;used.add(p.id);}});const posMap={'GK':['GK'],'LB':['LB','LWB'],'RB':['RB','RWB'],'CB':['CB'],'LWB':['LWB','LB'],'RWB':['RWB','RB'],'CDM':['CDM','CM'],'CM':['CM','CDM','CAM'],'CAM':['CAM','CM','CF'],'LM':['LM','LW'],'RM':['RM','RW'],'LW':['LW','LM','ST'],'RW':['RW','RM','ST'],'ST':['ST','CF','LW','RW'],'CF':['CF','ST','CAM']};const unassigned=starters.filter(p=>!used.has(p.id));spots.forEach((spot,i)=>{if(assigned[i])return;const compatible=posMap[spot.p]||[spot.p];const match=unassigned.find(p=>compatible.includes(p.position));if(match){assigned[i]=match;used.add(match.id);unassigned.splice(unassigned.indexOf(match),1);}});spots.forEach((spot,i)=>{if(assigned[i]||!unassigned.length)return;assigned[i]=unassigned.shift();used.add(assigned[i].id);});return assigned;}
+
+function renderFormation(){if(!career){document.getElementById('pitch').innerHTML='<div class="no-data" style="padding:60px 20px">Maak eerst een career mode aan</div>';document.getElementById('bench-list').innerHTML='';return;}const form=career.formation||'4-3-3';document.getElementById('formation-select').value=form;const spots=FORMATIONS[form]||FORMATIONS['4-3-3'];const assigned=getSpotAssignments();const bench=career.players.filter(p=>!p.starter);let html='';spots.forEach((spot,i)=>{const player=assigned[i];if(player){const photoHtml=player.photo?`<img src="${player.photo}">`:getInitials(player.name);const menuOpen=openMenuId===player.id;html+=`<div class="pitch-player" style="left:${spot.x}%;top:${spot.y}%;${menuOpen?'z-index:60':''}" onclick="showPlayerMenu('${player.id}',event)"><div class="player-photo">${photoHtml}</div><div class="player-name">${player.name}</div><div class="player-rating">${player.rating} | ${spot.p}</div>${menuOpen?`<div class="player-menu" onclick="event.stopPropagation()"><div onclick="changePlayerPhoto('${player.id}');openMenuId=null;"><i class="fa-solid fa-camera"></i> Foto wijzigen</div><div onclick="movePlayerToSpot('${player.id}')"><i class="fa-solid fa-arrows-up-down-left-right"></i> Verplaatsen</div><div onclick="toggleStarter('${player.id}')"><i class="fa-solid fa-arrow-down"></i> Naar bank</div><div onclick="deletePlayer('${player.id}')"><i class="fa-solid fa-trash" style="color:#f44336"></i> Verwijderen</div></div>`:''}</div>`;}else{html+=`<div class="pitch-player" style="left:${spot.x}%;top:${spot.y}%"><div class="player-photo" style="opacity:0.3">+</div><div class="player-name" style="opacity:0.4">${spot.p}</div></div>`;}});document.getElementById('pitch').innerHTML=html;document.getElementById('bench-list').innerHTML=bench.length?bench.map(p=>`<div class="player-card"><div class="p-photo" style="cursor:pointer" onclick="changePlayerPhoto('${p.id}')">${p.photo?`<img src="${p.photo}">`:getInitials(p.name)}</div><div class="p-info"><div class="p-name">${p.name}</div><div class="p-detail">${p.position} | ${p.rating} OVR</div></div>${isViewingFriend?'':`<button class="btn btn-outline btn-sm" onclick="movePlayerToSpot('${p.id}')" title="Naar positie"><i class="fa-solid fa-arrow-up"></i></button><button class="btn btn-danger btn-sm" onclick="deletePlayer('${p.id}')"><i class="fa-solid fa-trash"></i></button>`}</div>`).join(''):'<div class="no-data" style="padding:20px">Geen spelers op de bank</div>';}
+function toggleStarter(id){if(!career||isViewingFriend)return;const p=career.players.find(x=>x.id===id);if(p){p.starter=!p.starter;p.spotIndex=-1;openMenuId=null;save();renderFormation();}}
+function changeFormation(val){if(career&&!isViewingFriend){career.formation=val;save();renderFormation();}}
+
+function addRating(){if(!career||isViewingFriend)return;const pid=document.getElementById('prog-player').value;const season=document.getElementById('prog-season').value;const rating=parseInt(document.getElementById('prog-rating').value);if(!pid||!season||!rating)return alert('Vul alles in');if(!career.ratings)career.ratings={};if(!career.ratings[pid])career.ratings[pid]=[];const existing=career.ratings[pid].find(r=>r.season===season);if(existing)existing.rating=rating;else career.ratings[pid].push({season,rating});const player=career.players.find(p=>p.id===pid);if(player)player.rating=rating;save();renderChart();renderRatingsOverview();}
+let chartInstance=null;
+function renderChart(){const pid=document.getElementById('chart-player').value;const ctx=document.getElementById('prog-chart').getContext('2d');if(chartInstance){chartInstance.destroy();chartInstance=null;}if(!career||!pid||!career.ratings||!career.ratings[pid]||!career.ratings[pid].length)return;const ratings=career.ratings[pid].sort((a,b)=>career.seasons.indexOf(a.season)-career.seasons.indexOf(b.season));chartInstance=new Chart(ctx,{type:'line',data:{labels:ratings.map(r=>r.season),datasets:[{label:'Rating',data:ratings.map(r=>r.rating),borderColor:'#00d4aa',backgroundColor:'rgba(0,212,170,0.1)',fill:true,tension:0.3,pointBackgroundColor:'#00d4aa',pointRadius:6,pointHoverRadius:8}]},options:{responsive:true,maintainAspectRatio:false,scales:{y:{min:Math.max(1,Math.min(...ratings.map(r=>r.rating))-5),max:Math.min(99,Math.max(...ratings.map(r=>r.rating))+5),grid:{color:'#1e2a3a'},ticks:{color:'#888'}},x:{grid:{color:'#1e2a3a'},ticks:{color:'#888'}}},plugins:{legend:{display:false}}}});}
+function renderRatingsOverview(){const el=document.getElementById('ratings-overview');if(!career||!career.players.length){el.innerHTML='<div class="no-data">Voeg spelers toe via de Opstelling tab</div>';return;}el.innerHTML=career.players.sort((a,b)=>b.rating-a.rating).map(p=>{const rats=career.ratings&&career.ratings[p.id]?career.ratings[p.id]:[];const sorted=rats.sort((a,b)=>career.seasons.indexOf(a.season)-career.seasons.indexOf(b.season));const trend=sorted.length>=2?(sorted[sorted.length-1].rating>sorted[sorted.length-2].rating?'<i class="fa-solid fa-arrow-up" style="color:#4CAF50"></i>':sorted[sorted.length-1].rating<sorted[sorted.length-2].rating?'<i class="fa-solid fa-arrow-down" style="color:#f44336"></i>':'<i class="fa-solid fa-minus" style="color:#FF9800"></i>'):'';return`<div class="player-card" style="margin-bottom:6px"><div class="p-photo">${p.photo?`<img src="${p.photo}">`:getInitials(p.name)}</div><div class="p-info"><div class="p-name">${p.name} <span style="color:#888;font-size:12px">${p.position}</span></div><div class="p-ratings">${sorted.map(r=>`${r.season}: ${r.rating}`).join(' → ')} ${trend}</div></div></div>`;}).join('');}
+
+let pendingLogoBase64='';
+document.getElementById('team-logo-file').addEventListener('change',function(e){const file=e.target.files[0];if(!file)return;resizeImg(file,function(d){pendingLogoBase64=d;document.getElementById('logo-preview').innerHTML=`<img src="${d}" style="width:100%;height:100%;object-fit:contain">`;document.getElementById('logo-preview-row').style.display='flex';});});
+function addTeam(){if(isViewingFriend)return;const name=document.getElementById('team-name').value.trim();if(!name)return alert('Vul een teamnaam in');if(data.teams.find(t=>t.name===name))return alert('Team bestaat al');data.teams.push({name,logo:pendingLogoBase64||document.getElementById('team-logo').value.trim(),color:document.getElementById('team-color').value});save();document.getElementById('team-name').value='';document.getElementById('team-logo').value='';document.getElementById('team-logo-file').value='';document.getElementById('logo-preview-row').style.display='none';pendingLogoBase64='';populateTeamSelects();renderTeams();}
+function deleteTeam(name){if(isViewingFriend||!confirm(`${name} verwijderen?`))return;data.teams=data.teams.filter(t=>t.name!==name);save();populateTeamSelects();renderTeams();}
+function changeTeamLogo(name){if(isViewingFriend)return;const input=document.createElement('input');input.type='file';input.accept='image/*';input.onchange=function(e){const file=e.target.files[0];if(!file)return;resizeImg(file,function(d){const t=data.teams.find(x=>x.name===name);if(t){t.logo=d;save();renderTeams();renderCareerBar();}});};input.click();}
+function renderTeams(){const el=document.getElementById('teams-list');const sorted=[...data.teams].sort((a,b)=>a.name.localeCompare(b.name));el.innerHTML=sorted.map(t=>`<div style="background:#111827;border-radius:10px;padding:12px 16px;border:1px solid #1e2a3a;display:flex;align-items:center;gap:10px;justify-content:space-between"><div style="display:flex;align-items:center;gap:10px;cursor:pointer" onclick="changeTeamLogo('${t.name.replace(/'/g,"\\'")}')"> ${teamLogo(t.name)} <span style="font-size:14px;font-weight:500">${t.name}</span>${isViewingFriend?'':`<i class="fa-solid fa-camera" style="font-size:11px;color:#555"></i>`}</div>${isViewingFriend?'':`<button class="btn btn-danger btn-sm" onclick="deleteTeam('${t.name.replace(/'/g,"\\'")}')"><i class="fa-solid fa-trash"></i></button>`}</div>`).join('');}
+
+const TF_LABELS={'buy':'Gekocht','sell':'Verkocht','loan-in':'Gehuurd','loan-out':'Verhuurd','free':'Transfervrij'};
+const TF_ICONS={'buy':'fa-arrow-right-to-bracket','sell':'fa-arrow-right-from-bracket','loan-in':'fa-arrow-right-to-bracket','loan-out':'fa-arrow-right-from-bracket','free':'fa-handshake'};
+const TF_COLORS={'buy':'#4CAF50','sell':'#f44336','loan-in':'#0088ff','loan-out':'#FF9800','free':'#00d4aa'};
+function parseFee(str){if(!str)return 0;const s=str.replace(/[^0-9.,mMkK]/g,'');let n=parseFloat(s.replace(',','.'))||0;if(/m/i.test(str))n*=1000000;else if(/k/i.test(str))n*=1000;return n;}
+function formatFee(n){if(n>=1000000)return`€${(n/1000000).toFixed(1).replace('.0','')}M`;if(n>=1000)return`€${(n/1000).toFixed(0)}K`;if(n>0)return`€${n}`;return'Gratis';}
+function updateTransferForm(){const type=document.getElementById('tf-type').value;const isOut=type==='sell'||type==='loan-out';const isIn=type==='buy'||type==='loan-in'||type==='free';document.getElementById('tf-player-input-row').style.display=isOut?'none':'flex';document.getElementById('tf-player-select-row').style.display=isOut?'flex':'none';document.getElementById('tf-position-row').style.display=isIn?'flex':'none';document.getElementById('tf-rating-row').style.display=isIn?'flex':'none';if(isOut&&career){const sel=document.getElementById('tf-player-select');sel.innerHTML=career.players.sort((a,b)=>a.name.localeCompare(b.name)).map(p=>`<option value="${p.id}">${p.name} (${p.position} | ${p.rating})</option>`).join('');}}
+document.getElementById('tf-type').addEventListener('change',updateTransferForm);
+
+function addTransfer(){if(!career||isViewingFriend)return;if(!career.transfers)career.transfers=[];const type=document.getElementById('tf-type').value;const isOut=type==='sell'||type==='loan-out';let playerName,position,rating;if(isOut){const pid=document.getElementById('tf-player-select').value;const p=career.players.find(x=>x.id===pid);if(!p)return alert('Kies een speler');playerName=p.name;position=p.position;rating=p.rating;career.players=career.players.filter(x=>x.id!==pid);if(career.ratings)delete career.ratings[pid];}else{playerName=document.getElementById('tf-player').value.trim();if(!playerName)return alert('Vul een spelernaam in');position=document.getElementById('tf-position').value;rating=parseInt(document.getElementById('tf-rating').value)||70;const newPlayer={id:'p'+Date.now(),name:playerName,position,rating,starter:false,photo:''};career.players.push(newPlayer);if(!career.ratings)career.ratings={};career.ratings[newPlayer.id]=[{season:document.getElementById('tf-season').value,rating}];}career.transfers.unshift({id:Date.now(),type,player:playerName,position,rating,club:document.getElementById('tf-club').value.trim(),fee:document.getElementById('tf-fee').value.trim(),feeNum:parseFee(document.getElementById('tf-fee').value),season:document.getElementById('tf-season').value});save();document.getElementById('tf-player').value='';document.getElementById('tf-club').value='';document.getElementById('tf-fee').value='';document.getElementById('tf-rating').value='';renderTransfers();renderFormation();populatePlayers();updateTransferForm();}
+function deleteTransfer(id){if(!career||isViewingFriend)return;career.transfers=career.transfers.filter(t=>t.id!==id);save();renderTransfers();}
+
+function renderTransfers(){if(!career){document.getElementById('tf-list-in').innerHTML='<div class="no-data">Maak eerst een career mode aan</div>';document.getElementById('tf-list-out').innerHTML='';document.getElementById('tf-stats').innerHTML='';return;}if(!career.transfers)career.transfers=[];let transfers=career.transfers;const fs=document.getElementById('tf-filter-season').value;const ft=document.getElementById('tf-filter-type').value;if(fs)transfers=transfers.filter(t=>t.season===fs);if(ft)transfers=transfers.filter(t=>t.type===ft);const incoming=transfers.filter(t=>t.type==='buy'||t.type==='loan-in'||t.type==='free');const outgoing=transfers.filter(t=>t.type==='sell'||t.type==='loan-out');const spent=transfers.filter(t=>t.type==='buy'||t.type==='free').reduce((s,t)=>s+t.feeNum,0);const earned=transfers.filter(t=>t.type==='sell').reduce((s,t)=>s+t.feeNum,0);document.getElementById('tf-stats').innerHTML=`<div class="stat-card"><div class="value">${transfers.length}</div><div class="label">Transfers</div></div><div class="stat-card"><div class="value" style="color:#f44336">${formatFee(spent)}</div><div class="label">Uitgegeven</div></div><div class="stat-card"><div class="value" style="color:#4CAF50">${formatFee(earned)}</div><div class="label">Ontvangen</div></div><div class="stat-card"><div class="value" style="color:${earned>=spent?'#4CAF50':'#f44336'}">${earned>=spent?'+':''}${formatFee(Math.abs(earned-spent))}</div><div class="label">Saldo</div></div>`;function tfCard(t){const dir=(t.type==='sell'||t.type==='loan-out')?'Naar':'Van';return`<div class="match-card" style="margin-bottom:6px;cursor:default"><div style="display:flex;align-items:center;justify-content:space-between"><div style="display:flex;align-items:center;gap:12px"><i class="fa-solid ${TF_ICONS[t.type]}" style="color:${TF_COLORS[t.type]};font-size:18px;width:24px;text-align:center"></i><div><div style="font-weight:500">${t.player} ${t.position?'<span style="color:#0088ff;font-size:12px;font-weight:400">'+t.position+'</span>':''} ${t.rating?'<span style="color:#ffd700;font-size:12px;font-weight:400">'+t.rating+'</span>':''}</div><div style="font-size:12px;color:#888">${t.club?dir+' '+t.club:''}</div></div></div><div style="text-align:right;display:flex;align-items:center;gap:12px"><div><div style="font-weight:600;color:${TF_COLORS[t.type]}">${t.fee?formatFee(t.feeNum):'Gratis'}</div><div style="font-size:11px;color:#666">${t.season} | ${TF_LABELS[t.type]}</div></div>${isViewingFriend?'':`<button class="btn btn-danger btn-sm" onclick="deleteTransfer(${t.id})"><i class="fa-solid fa-trash"></i></button>`}</div></div></div>`;}document.getElementById('tf-list-in').innerHTML=incoming.length?incoming.map(tfCard).join(''):'<div class="no-data" style="padding:20px">Geen inkomende transfers</div>';document.getElementById('tf-list-out').innerHTML=outgoing.length?outgoing.map(tfCard).join(''):'<div class="no-data" style="padding:20px">Geen uitgaande transfers</div>';}
+
+// Tabs
+document.querySelectorAll('.tab').forEach(tab=>{tab.addEventListener('click',()=>{document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));tab.classList.add('active');document.getElementById('panel-'+tab.dataset.tab).classList.add('active');if(tab.dataset.tab==='stats')renderStats();if(tab.dataset.tab==='standings'){populateStandingInputs();renderStandings();}if(tab.dataset.tab==='teams')renderTeams();if(tab.dataset.tab==='squad')renderFormation();if(tab.dataset.tab==='progress'){populatePlayers();renderRatingsOverview();}if(tab.dataset.tab==='transfers')renderTransfers();if(tab.dataset.tab==='friends')loadFriends();});});
+
+function refreshAll(){populateSeasons();populateComps();populateTeamSelects();populateStandingInputs();populatePlayers();renderMatches();renderCareerBar();renderStats();renderStandings();renderFormation();renderRatingsOverview();renderTransfers();}
+
+function initApp(){refreshAll();renderTeams();}
+
+document.getElementById('login-name').addEventListener('keypress',function(e){if(e.key==='Enter')doLogin();});
+</script>
+</body>
+</html>
