@@ -510,21 +510,26 @@ auth.onAuthStateChanged(async user => {
   document.getElementById('login-screen').style.display = 'none';
   document.getElementById('main-app').style.display = '';
 
-  await db.collection('users').doc(currentUserId).set({ name, lastSeen: firebase.firestore.FieldValue.serverTimestamp() }, { merge: true });
-
-  const doc = await db.collection('users').doc(currentUserId).collection('data').doc('main').get();
-  if (doc.exists) {
-    data = doc.data();
-    if (!data.teams || !data.teams.length) data.teams = defaultTeams;
-    if (!data.careers) data.careers = [];
-  } else {
+  try {
+    await db.collection('users').doc(currentUserId).set({ name, lastSeen: firebase.firestore.FieldValue.serverTimestamp() }, { merge: true });
+    const doc = await db.collection('users').doc(currentUserId).collection('data').doc('main').get();
+    if (doc.exists) {
+      data = doc.data();
+      if (!data.teams || !data.teams.length) data.teams = defaultTeams;
+      if (!data.careers) data.careers = [];
+    } else {
+      data = { teams: defaultTeams, careers: [], activeCareerId: null };
+      await saveToFirebase();
+    }
+    setSyncStatus('Gesynchroniseerd');
+  } catch(e) {
+    console.error('Firestore error:', e);
     data = { teams: defaultTeams, careers: [], activeCareerId: null };
-    await saveToFirebase();
+    setSyncStatus('Offline modus - kon niet verbinden');
   }
 
   if (data.activeCareerId) career = data.careers.find(c => c.id === data.activeCareerId) || null;
   initApp();
-  setSyncStatus('Gesynchroniseerd');
 });
 
 async function saveToFirebase() {
