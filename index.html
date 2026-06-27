@@ -809,7 +809,55 @@ function addMatch(){if(!career||isViewingFriend)return;
 function deleteMatch(id){if(!career||isViewingFriend)return;career.matches=career.matches.filter(m=>m.id!==id);save();renderMatches();}
 function toggleNote(id){const el=document.getElementById('note-'+id);if(el)el.classList.toggle('show');}
 
-function renderMatches(){const el=document.getElementById('matches-list');if(!career){el.innerHTML='<div class="no-data">Maak eerst een career mode aan</div>';return;}const fs=document.getElementById('filter-season').value;const fc=document.getElementById('filter-comp').value;let matches=career.matches;if(fs)matches=matches.filter(m=>m.season===fs);if(fc)matches=matches.filter(m=>m.comp===fc);if(!matches.length){el.innerHTML='<div class="no-data">Nog geen wedstrijden</div>';return;}el.innerHTML=matches.map(m=>{const isMyHome=m.home===career.team;const isMyAway=m.away===career.team;const myGoals=isMyHome?m.homeScore:m.awayScore;const theirGoals=isMyHome?m.awayScore:m.homeScore;const resultColor=(isMyHome||isMyAway)?(myGoals>theirGoals?'#4CAF50':myGoals<theirGoals?'#f44336':'#FF9800'):'#fff';return`<div class="match-card" onclick="toggleNote(${m.id})"><div class="match-top"><div class="match-teams"><div class="match-team">${teamLogo(m.home)}<span>${m.home}</span></div><div class="match-score" style="color:${resultColor}">${m.homeScore} - ${m.awayScore}</div><div class="match-team away">${teamLogo(m.away)}<span>${m.away}</span></div></div><div class="match-meta"><div class="match-comp">${m.comp}</div><div>${m.round||('SD '+m.day)} | ${m.season}</div></div></div>${m.note?`<div class="match-note" id="note-${m.id}"><i class="fa-solid fa-comment" style="margin-right:6px"></i>${m.note}</div>`:''}<div class="match-expand"><div class="note-hint">${m.note?'<i class="fa-solid fa-comment"></i> Tik voor notitie':''}</div>${isViewingFriend?'':`<button class="btn btn-danger btn-sm" onclick="event.stopPropagation();deleteMatch(${m.id})"><i class="fa-solid fa-trash"></i></button>`}</div></div>`;}).join('');}
+function editMatch(id){
+  if(!career||isViewingFriend)return;
+  const m=career.matches.find(x=>x.id===id);
+  if(!m)return;
+  const type=getCompType(m.comp);
+  const euroOpts=['Groepsfase speeldag 1','Groepsfase speeldag 2','Groepsfase speeldag 3','Groepsfase speeldag 4','Groepsfase speeldag 5','Groepsfase speeldag 6','Tussenronde heen','Tussenronde terug','Achtste finale heen','Achtste finale terug','Kwartfinale heen','Kwartfinale terug','Halve finale heen','Halve finale terug','Finale'];
+  const cupOpts=['Eerste ronde','Tweede ronde','Achtste finale','Kwartfinale','Halve finale','Finale'];
+
+  let roundHtml='';
+  if(type==='euro'){
+    roundHtml=`<div class="form-row"><label>Ronde</label><select id="edit-round">${euroOpts.map(o=>`<option${o===m.round?' selected':''}>${o}</option>`).join('')}</select></div>`;
+  }else if(type==='cup'){
+    roundHtml=`<div class="form-row"><label>Ronde</label><select id="edit-round">${cupOpts.map(o=>`<option${o===m.round?' selected':''}>${o}</option>`).join('')}</select></div>`;
+  }else{
+    roundHtml=`<div class="form-row"><label>Speeldag</label><input type="number" id="edit-day" value="${m.day||1}" min="1" style="width:80px"></div>`;
+  }
+
+  const html=`<div class="modal">
+    <h3><i class="fa-solid fa-pen"></i> Wedstrijd bewerken</h3>
+    <div class="form-row"><label>Competitie</label><span style="color:#0088ff">${m.comp}</span></div>
+    ${roundHtml}
+    <div class="form-row"><label>Score</label>
+      <input type="number" id="edit-home-score" value="${m.homeScore}" min="0" style="width:60px"> <span style="color:#555">-</span>
+      <input type="number" id="edit-away-score" value="${m.awayScore}" min="0" style="width:60px">
+    </div>
+    <div class="form-row"><label></label><span style="font-size:12px;color:#888">${m.home} - ${m.away}</span></div>
+    <div class="form-row"><label>Notitie</label><textarea id="edit-note" style="flex:1">${m.note||''}</textarea></div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px">
+      <button class="btn btn-outline" onclick="closeModal('edit-match-modal')">Annuleren</button>
+      <button class="btn btn-primary" onclick="saveEditMatch(${id},'${type}')"><i class="fa-solid fa-save"></i> Opslaan</button>
+    </div>
+  </div>`;
+  let overlay=document.getElementById('edit-match-modal');
+  if(!overlay){overlay=document.createElement('div');overlay.id='edit-match-modal';overlay.className='modal-overlay';document.body.appendChild(overlay);}
+  overlay.innerHTML=html;overlay.classList.add('show');
+}
+
+function saveEditMatch(id,type){
+  const m=career.matches.find(x=>x.id===id);
+  if(!m)return;
+  m.homeScore=parseInt(document.getElementById('edit-home-score').value)||0;
+  m.awayScore=parseInt(document.getElementById('edit-away-score').value)||0;
+  m.note=document.getElementById('edit-note').value.trim();
+  if(type==='league'){m.day=parseInt(document.getElementById('edit-day').value)||1;m.round='';}
+  else{m.round=document.getElementById('edit-round').value;m.day=0;}
+  save();closeModal('edit-match-modal');renderMatches();
+}
+
+function renderMatches(){const el=document.getElementById('matches-list');if(!career){el.innerHTML='<div class="no-data">Maak eerst een career mode aan</div>';return;}const fs=document.getElementById('filter-season').value;const fc=document.getElementById('filter-comp').value;let matches=career.matches;if(fs)matches=matches.filter(m=>m.season===fs);if(fc)matches=matches.filter(m=>m.comp===fc);if(!matches.length){el.innerHTML='<div class="no-data">Nog geen wedstrijden</div>';return;}el.innerHTML=matches.map(m=>{const isMyHome=m.home===career.team;const isMyAway=m.away===career.team;const myGoals=isMyHome?m.homeScore:m.awayScore;const theirGoals=isMyHome?m.awayScore:m.homeScore;const resultColor=(isMyHome||isMyAway)?(myGoals>theirGoals?'#4CAF50':myGoals<theirGoals?'#f44336':'#FF9800'):'#fff';return`<div class="match-card" onclick="toggleNote(${m.id})"><div class="match-top"><div class="match-teams"><div class="match-team">${teamLogo(m.home)}<span>${m.home}</span></div><div class="match-score" style="color:${resultColor}">${m.homeScore} - ${m.awayScore}</div><div class="match-team away">${teamLogo(m.away)}<span>${m.away}</span></div></div><div class="match-meta"><div class="match-comp">${m.comp}</div><div>${m.round||('SD '+m.day)} | ${m.season}</div></div></div>${m.note?`<div class="match-note" id="note-${m.id}"><i class="fa-solid fa-comment" style="margin-right:6px"></i>${m.note}</div>`:''}<div class="match-expand"><div class="note-hint">${m.note?'<i class="fa-solid fa-comment"></i> Tik voor notitie':''}</div>${isViewingFriend?'':`<button class="btn btn-outline btn-sm" onclick="event.stopPropagation();editMatch(${m.id})" style="margin-right:4px"><i class="fa-solid fa-pen"></i></button><button class="btn btn-danger btn-sm" onclick="event.stopPropagation();deleteMatch(${m.id})"><i class="fa-solid fa-trash"></i></button>`}</div></div>`;}).join('');}
 
 function saveStanding(){if(!career||isViewingFriend)return;const season=document.getElementById('standing-season').value;if(!season)return;const league=getLeague();const st={};league.trophies.forEach(t=>{st[t.id]=document.getElementById('pos-'+t.id)?.value||'';});career.standings[season]=st;const next=nextSeasonName(season);if(next&&!career.seasons.includes(next)){career.seasons.push(next);populateSeasons();document.getElementById('match-season').value=next;document.getElementById('match-day').value=1;}save();renderStandings();alert('Opgeslagen!');}
 function posClass(val){if(val==='Winnaar'||val==='1')return'gold';if(val==='Finalist'||val==='2')return'silver';if(val==='Halve finale'||val==='3')return'bronze';return'';}
