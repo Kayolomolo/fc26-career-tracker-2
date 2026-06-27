@@ -182,6 +182,7 @@ textarea { width: 100%; min-height: 60px; resize: vertical; }
     <div class="user-bar">
       <span class="online-dot"></span>
       <span>Ingelogd als <span class="user-name" id="display-name"></span></span>
+      <button onclick="showImportModal()"><i class="fa-solid fa-file-import"></i> Importeren</button>
       <button onclick="doLogout()"><i class="fa-solid fa-right-from-bracket"></i> Uitloggen</button>
     </div>
     <div class="sync-status" id="sync-status"></div>
@@ -398,6 +399,34 @@ textarea { width: 100%; min-height: 60px; resize: vertical; }
     <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px">
       <button class="btn btn-outline" onclick="closeModal('career-modal')">Annuleren</button>
       <button class="btn btn-primary" onclick="saveCareer()">Aanmaken</button>
+    </div>
+  </div>
+</div>
+
+<!-- Import modal -->
+<div class="modal-overlay" id="import-modal">
+  <div class="modal">
+    <h3><i class="fa-solid fa-file-import"></i> Data importeren</h3>
+    <p style="font-size:13px;color:#888;margin-bottom:16px">Importeer je data uit de oude versie (1.0). Je kunt een bestand uploaden of de data plakken.</p>
+    <div style="margin-bottom:12px">
+      <p style="font-size:12px;color:#888;margin-bottom:6px">Optie 1: Bestand uploaden</p>
+      <input type="file" id="import-file" accept=".json" style="font-size:13px;color:#888">
+    </div>
+    <div style="margin-bottom:12px">
+      <p style="font-size:12px;color:#888;margin-bottom:6px">Optie 2: Data plakken</p>
+      <textarea id="import-text" placeholder="Plak hier je JSON data" style="min-height:100px"></textarea>
+    </div>
+    <div style="background:#0a0e1a;border-radius:8px;padding:12px;margin-bottom:16px">
+      <p style="font-size:12px;color:#00d4aa;margin-bottom:8px">Hoe exporteer je uit de oude app?</p>
+      <p style="font-size:11px;color:#888">1. Open de oude app in je browser</p>
+      <p style="font-size:11px;color:#888">2. Druk F12 (developer tools)</p>
+      <p style="font-size:11px;color:#888">3. Ga naar Console en typ:</p>
+      <p style="font-size:11px;color:#00d4aa;font-family:monospace;margin:4px 0">copy(localStorage.getItem('fc26data2'))</p>
+      <p style="font-size:11px;color:#888">4. Plak het hierboven (Ctrl+V)</p>
+    </div>
+    <div style="display:flex;gap:8px;justify-content:flex-end">
+      <button class="btn btn-outline" onclick="closeModal('import-modal')">Annuleren</button>
+      <button class="btn btn-primary" onclick="doImport()"><i class="fa-solid fa-file-import"></i> Importeren</button>
     </div>
   </div>
 </div>
@@ -713,6 +742,53 @@ function refreshAll(){populateSeasons();populateComps();populateTeamSelects();po
 function initApp(){refreshAll();renderTeams();}
 
 document.getElementById('login-name').addEventListener('keypress',function(e){if(e.key==='Enter')doLogin();});
+
+function showImportModal(){showModal('import-modal');}
+
+function doImport(){
+  let raw = document.getElementById('import-text').value.trim();
+  const file = document.getElementById('import-file').files[0];
+
+  function processImport(jsonStr){
+    try {
+      const imported = JSON.parse(jsonStr);
+      if(!imported||typeof imported!=='object') return alert('Ongeldige data');
+      if(imported.careers&&imported.careers.length){
+        imported.careers.forEach(c=>{
+          if(!data.careers.find(x=>x.id===c.id)) data.careers.push(c);
+        });
+      }
+      if(imported.teams&&imported.teams.length){
+        imported.teams.forEach(t=>{
+          if(!data.teams.find(x=>x.name===t.name)) data.teams.push(t);
+        });
+      }
+      if(imported.activeCareerId&&!data.activeCareerId){
+        data.activeCareerId=imported.activeCareerId;
+        career=data.careers.find(c=>c.id===data.activeCareerId)||null;
+      }
+      save();
+      closeModal('import-modal');
+      document.getElementById('import-text').value='';
+      document.getElementById('import-file').value='';
+      refreshAll();
+      renderTeams();
+      alert('Data geimporteerd! '+data.careers.length+' career modes geladen.');
+    } catch(e){
+      alert('Fout bij importeren: ongeldige JSON data');
+    }
+  }
+
+  if(file){
+    const reader=new FileReader();
+    reader.onload=function(e){processImport(e.target.result);};
+    reader.readAsText(file);
+  } else if(raw){
+    processImport(raw);
+  } else {
+    alert('Upload een bestand of plak je data');
+  }
+}
 </script>
 </body>
 </html>
