@@ -896,7 +896,7 @@ function renderCareerBar(){const bar=document.getElementById('career-bar');const
 
 function applyTheme(){document.body.setAttribute('data-theme',career?career.country:'');}
 function switchCareer(id){data.activeCareerId=id;career=data.careers.find(c=>c.id===id)||null;save();applyTheme();renderCareerBar();refreshAll();}
-function deleteCareer(id){if(isViewingFriend||!confirm('Career mode verwijderen?'))return;data.careers=data.careers.filter(c=>c.id!==id);if(data.activeCareerId===id){data.activeCareerId=data.careers[0]?.id||null;career=data.careers[0]||null;}save();renderCareerBar();refreshAll();}
+function deleteCareer(id){if(isViewingFriend)return;if(!confirm('Career mode verwijderen?'))return;data.careers=data.careers.filter(c=>c.id!==id);if(data.activeCareerId===id){data.activeCareerId=data.careers[0]?.id||null;career=data.careers[0]||null;}save();applyTheme();renderCareerBar();refreshAll();}
 function populateCareerModal(){const el=document.getElementById('cm-team');const sorted=[...data.teams].sort((a,b)=>a.name.localeCompare(b.name));el.innerHTML=sorted.map(t=>`<option>${t.name}</option>`).join('');}
 function saveCareer(){const name=document.getElementById('cm-name').value.trim();const team=document.getElementById('cm-team').value;const country=document.getElementById('cm-country').value;if(!name)return alert('Vul een naam in');const c={id:'c'+Date.now(),name,team,country,seasons:['24/25'],matches:[],standings:{},players:[],formation:'4-3-3',ratings:{}};data.careers.push(c);data.activeCareerId=c.id;career=c;save();closeModal('career-modal');document.getElementById('cm-name').value='';applyTheme();renderCareerBar();refreshAll();}
 
