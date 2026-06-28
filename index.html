@@ -1317,34 +1317,89 @@ function renderTrophyCabinet() {
 // ACHIEVEMENTS
 // ============================================
 const ACHIEVEMENTS = [
+  // Wedstrijden gespeeld
   {id:'first_match',icon:'fa-futbol',tier:'bronze',name:'Eerste wedstrijd',desc:'Speel je eerste wedstrijd',check:s=>s.matches>=1},
   {id:'10_matches',icon:'fa-futbol',tier:'bronze',name:'Getting Started',desc:'Speel 10 wedstrijden',check:s=>s.matches>=10},
+  {id:'25_matches',icon:'fa-futbol',tier:'bronze',name:'Quarter Century',desc:'Speel 25 wedstrijden',check:s=>s.matches>=25},
   {id:'50_matches',icon:'fa-futbol',tier:'silver',name:'Doorgewinterd',desc:'Speel 50 wedstrijden',check:s=>s.matches>=50},
-  {id:'100_matches',icon:'fa-futbol',tier:'gold',name:'Veteraan',desc:'Speel 100 wedstrijden',check:s=>s.matches>=100},
+  {id:'100_matches',icon:'fa-futbol',tier:'silver',name:'Veteraan',desc:'Speel 100 wedstrijden',check:s=>s.matches>=100},
+  {id:'200_matches',icon:'fa-futbol',tier:'gold',name:'Legend Status',desc:'Speel 200 wedstrijden',check:s=>s.matches>=200},
+  {id:'500_matches',icon:'fa-futbol',tier:'gold',name:'Hall of Fame',desc:'Speel 500 wedstrijden',check:s=>s.matches>=500},
+  // Overwinningen
   {id:'first_win',icon:'fa-trophy',tier:'bronze',name:'Eerste overwinning',desc:'Win je eerste wedstrijd',check:s=>s.wins>=1},
-  {id:'10_wins',icon:'fa-trophy',tier:'silver',name:'Winnaar',desc:'Win 10 wedstrijden',check:s=>s.wins>=10},
-  {id:'50_wins',icon:'fa-trophy',tier:'gold',name:'Machine',desc:'Win 50 wedstrijden',check:s=>s.wins>=50},
+  {id:'10_wins',icon:'fa-trophy',tier:'bronze',name:'Winnaar',desc:'Win 10 wedstrijden',check:s=>s.wins>=10},
+  {id:'25_wins',icon:'fa-trophy',tier:'silver',name:'Consistent',desc:'Win 25 wedstrijden',check:s=>s.wins>=25},
+  {id:'50_wins',icon:'fa-trophy',tier:'silver',name:'Machine',desc:'Win 50 wedstrijden',check:s=>s.wins>=50},
+  {id:'100_wins',icon:'fa-trophy',tier:'gold',name:'Centurion',desc:'Win 100 wedstrijden',check:s=>s.wins>=100},
+  // Win percentage
+  {id:'win_70',icon:'fa-percent',tier:'bronze',name:'Sterk',desc:'Win percentage boven 70% (min 20 wedstrijden)',check:s=>s.winPct>=70&&s.matches>=20},
+  {id:'win_80',icon:'fa-percent',tier:'silver',name:'Dominant',desc:'Win percentage boven 80% (min 20 wedstrijden)',check:s=>s.winPct>=80&&s.matches>=20},
+  {id:'win_90',icon:'fa-percent',tier:'gold',name:'Perfectionist',desc:'Win percentage boven 90% (min 20 wedstrijden)',check:s=>s.winPct>=90&&s.matches>=20},
+  // Winstreaks
   {id:'win_streak_3',icon:'fa-fire',tier:'bronze',name:'On Fire',desc:'Win 3 wedstrijden op rij',check:s=>s.bestStreak>=3},
-  {id:'win_streak_5',icon:'fa-fire',tier:'silver',name:'Unstoppable',desc:'Win 5 wedstrijden op rij',check:s=>s.bestStreak>=5},
-  {id:'win_streak_10',icon:'fa-fire',tier:'gold',name:'Onoverwinnelijk',desc:'Win 10 wedstrijden op rij',check:s=>s.bestStreak>=10},
+  {id:'win_streak_5',icon:'fa-fire',tier:'bronze',name:'Heet',desc:'Win 5 wedstrijden op rij',check:s=>s.bestStreak>=5},
+  {id:'win_streak_10',icon:'fa-fire',tier:'silver',name:'Unstoppable',desc:'Win 10 wedstrijden op rij',check:s=>s.bestStreak>=10},
+  {id:'win_streak_15',icon:'fa-fire',tier:'silver',name:'Niet te stoppen',desc:'Win 15 wedstrijden op rij',check:s=>s.bestStreak>=15},
+  {id:'win_streak_20',icon:'fa-fire',tier:'gold',name:'Godmode',desc:'Win 20 wedstrijden op rij',check:s=>s.bestStreak>=20},
+  // Lose streak
+  {id:'lose_3',icon:'fa-face-sad-tear',tier:'bronze',name:'Slechte week',desc:'Verlies 3 wedstrijden op rij',check:s=>s.bestLoseStreak>=3},
+  {id:'lose_5',icon:'fa-face-sad-tear',tier:'silver',name:'Crisis',desc:'Verlies 5 wedstrijden op rij',check:s=>s.bestLoseStreak>=5},
+  // Clean sheets
   {id:'clean_sheet',icon:'fa-shield-halved',tier:'bronze',name:'Clean Sheet',desc:'Win zonder tegendoelpunt',check:s=>s.cleanSheets>=1},
-  {id:'5_clean',icon:'fa-shield-halved',tier:'silver',name:'Muur',desc:'5 clean sheets',check:s=>s.cleanSheets>=5},
-  {id:'10_clean',icon:'fa-shield-halved',tier:'gold',name:'Onklopbaar',desc:'10 clean sheets',check:s=>s.cleanSheets>=10},
-  {id:'goals_50',icon:'fa-bullseye',tier:'bronze',name:'Scherp',desc:'Scoor 50 goals totaal',check:s=>s.goalsFor>=50},
+  {id:'5_clean',icon:'fa-shield-halved',tier:'bronze',name:'Stevig',desc:'5 clean sheets',check:s=>s.cleanSheets>=5},
+  {id:'10_clean',icon:'fa-shield-halved',tier:'silver',name:'Muur',desc:'10 clean sheets',check:s=>s.cleanSheets>=10},
+  {id:'20_clean',icon:'fa-shield-halved',tier:'silver',name:'Fort Knox',desc:'20 clean sheets',check:s=>s.cleanSheets>=20},
+  {id:'50_clean',icon:'fa-shield-halved',tier:'gold',name:'Onklopbaar',desc:'50 clean sheets',check:s=>s.cleanSheets>=50},
+  // Goals
+  {id:'goals_25',icon:'fa-bullseye',tier:'bronze',name:'Scherp',desc:'Scoor 25 goals totaal',check:s=>s.goalsFor>=25},
+  {id:'goals_50',icon:'fa-bullseye',tier:'bronze',name:'Topscorer',desc:'Scoor 50 goals totaal',check:s=>s.goalsFor>=50},
   {id:'goals_100',icon:'fa-bullseye',tier:'silver',name:'Doelpuntenmachine',desc:'Scoor 100 goals totaal',check:s=>s.goalsFor>=100},
+  {id:'goals_250',icon:'fa-bullseye',tier:'silver',name:'Dodelijk',desc:'Scoor 250 goals totaal',check:s=>s.goalsFor>=250},
   {id:'goals_500',icon:'fa-bullseye',tier:'gold',name:'Legende',desc:'Scoor 500 goals totaal',check:s=>s.goalsFor>=500},
-  {id:'big_win',icon:'fa-explosion',tier:'bronze',name:'Afslachting',desc:'Win een wedstrijd met 5+ goals verschil',check:s=>s.biggestWin>=5},
-  {id:'comeback',icon:'fa-rotate-left',tier:'silver',name:'Comeback King',desc:'Win een wedstrijd na achterstand (notitie met "comeback")',check:s=>s.comebacks>=1},
+  // Speciale wedstrijden
+  {id:'big_win',icon:'fa-explosion',tier:'bronze',name:'Afslachting',desc:'Win met 5+ goals verschil',check:s=>s.biggestWin>=5},
+  {id:'bigger_win',icon:'fa-explosion',tier:'silver',name:'Vernedering',desc:'Win met 7+ goals verschil',check:s=>s.biggestWin>=7},
+  {id:'biggest_win',icon:'fa-explosion',tier:'gold',name:'Historisch',desc:'Win met 10+ goals verschil',check:s=>s.biggestWin>=10},
+  {id:'high_score',icon:'fa-basketball',tier:'bronze',name:'Doelpuntenfestijn',desc:'Speel een wedstrijd met 8+ goals totaal',check:s=>s.highScore},
+  {id:'nil_nil',icon:'fa-ban',tier:'bronze',name:'Saaie pot',desc:'Speel een 0-0 gelijkspel',check:s=>s.nilNil},
+  {id:'comeback',icon:'fa-rotate-left',tier:'silver',name:'Comeback King',desc:'Win na achterstand (notitie met "comeback")',check:s=>s.comebacks>=1},
+  {id:'comeback_5',icon:'fa-rotate-left',tier:'gold',name:'Mr. Comeback',desc:'5 comebacks',check:s=>s.comebacks>=5},
+  // Thuis/uit
+  {id:'away_10',icon:'fa-plane',tier:'bronze',name:'Reiziger',desc:'Win 10 uitwedstrijden',check:s=>s.awayWins>=10},
+  {id:'away_25',icon:'fa-plane',tier:'silver',name:'Uitspecialist',desc:'Win 25 uitwedstrijden',check:s=>s.awayWins>=25},
+  {id:'home_10',icon:'fa-house',tier:'bronze',name:'Thuisblijver',desc:'Win 10 thuiswedstrijden',check:s=>s.homeWins>=10},
+  {id:'home_25',icon:'fa-house',tier:'silver',name:'Vesting',desc:'Win 25 thuiswedstrijden',check:s=>s.homeWins>=25},
+  // Trofeeën
   {id:'trophy_1',icon:'fa-medal',tier:'bronze',name:'Eerste prijs',desc:'Win je eerste trofee',check:s=>s.trophies>=1},
   {id:'trophy_3',icon:'fa-medal',tier:'silver',name:'Prijzenkast',desc:'Win 3 trofeeën',check:s=>s.trophies>=3},
+  {id:'trophy_5',icon:'fa-medal',tier:'silver',name:'Verzamelaar',desc:'Win 5 trofeeën',check:s=>s.trophies>=5},
   {id:'trophy_10',icon:'fa-medal',tier:'gold',name:'Dominantie',desc:'Win 10 trofeeën',check:s=>s.trophies>=10},
   {id:'champion',icon:'fa-crown',tier:'gold',name:'Kampioen!',desc:'Word kampioen (#1 in de competitie)',check:s=>s.champion},
+  {id:'cup_winner',icon:'fa-trophy',tier:'silver',name:'Bekerwinnaar',desc:'Win de nationale beker',check:s=>s.cupWinner},
   {id:'cl_winner',icon:'fa-star',tier:'gold',name:'Kings of Europe',desc:'Win de Champions League',check:s=>s.clWinner},
+  {id:'el_winner',icon:'fa-star',tier:'silver',name:'Europa League winnaar',desc:'Win de Europa League',check:s=>s.europaWinner},
+  {id:'conf_winner',icon:'fa-star',tier:'bronze',name:'Conference League winnaar',desc:'Win de Conference League',check:s=>s.confWinner},
+  {id:'double',icon:'fa-gem',tier:'gold',name:'The Double',desc:'Win competitie + beker in 1 seizoen',check:s=>s.double},
   {id:'treble',icon:'fa-gem',tier:'gold',name:'The Treble',desc:'Win competitie + beker + CL in 1 seizoen',check:s=>s.treble},
+  // Seizoen prestaties
   {id:'unbeaten',icon:'fa-infinity',tier:'gold',name:'Invincibles',desc:'Ga een heel seizoen ongeslagen (min 10 potjes)',check:s=>s.unbeatenSeason},
+  {id:'no_draw',icon:'fa-arrow-right',tier:'silver',name:'Geen grijze zone',desc:'Geen gelijkspel in een seizoen (min 10 potjes)',check:s=>s.noDrawSeason},
+  {id:'all_wins',icon:'fa-check-double',tier:'gold',name:'Perfectie',desc:'Win ALLE wedstrijden in een seizoen (min 10 potjes)',check:s=>s.allWinSeason},
+  // Seizoenen
+  {id:'season_3',icon:'fa-calendar',tier:'bronze',name:'Ervaren',desc:'Speel 3 seizoenen',check:s=>s.seasons>=3},
+  {id:'season_5',icon:'fa-calendar',tier:'silver',name:'Lange termijn',desc:'Speel 5 seizoenen',check:s=>s.seasons>=5},
+  {id:'season_10',icon:'fa-calendar',tier:'gold',name:'One Club Man',desc:'Speel 10 seizoenen',check:s=>s.seasons>=10},
+  // Transfers & selectie
+  {id:'transfer_5',icon:'fa-right-left',tier:'bronze',name:'Scout',desc:'Doe 5 transfers',check:s=>s.transfers>=5},
   {id:'transfer_10',icon:'fa-right-left',tier:'bronze',name:'Transfermarkt',desc:'Doe 10 transfers',check:s=>s.transfers>=10},
-  {id:'squad_full',icon:'fa-users',tier:'bronze',name:'Volledige selectie',desc:'Heb 11+ spelers in je selectie',check:s=>s.squadSize>=11},
-  {id:'multi_career',icon:'fa-layer-group',tier:'silver',name:'Multi-manager',desc:'Start 3 career modes',check:s=>s.careerCount>=3},
+  {id:'transfer_25',icon:'fa-right-left',tier:'silver',name:'Wheelen en dealen',desc:'Doe 25 transfers',check:s=>s.transfers>=25},
+  {id:'transfer_50',icon:'fa-right-left',tier:'gold',name:'Transfer king',desc:'Doe 50 transfers',check:s=>s.transfers>=50},
+  {id:'squad_full',icon:'fa-users',tier:'bronze',name:'Volledige selectie',desc:'Heb 11+ spelers',check:s=>s.squadSize>=11},
+  {id:'squad_big',icon:'fa-users',tier:'silver',name:'Brede selectie',desc:'Heb 25+ spelers',check:s=>s.squadSize>=25},
+  // Career modes
+  {id:'multi_career',icon:'fa-layer-group',tier:'bronze',name:'Multi-manager',desc:'Start 2 career modes',check:s=>s.careerCount>=2},
+  {id:'multi_career_3',icon:'fa-layer-group',tier:'silver',name:'Drukke manager',desc:'Start 3 career modes',check:s=>s.careerCount>=3},
+  {id:'multi_career_5',icon:'fa-layer-group',tier:'gold',name:'Career addict',desc:'Start 5 career modes',check:s=>s.careerCount>=5},
 ];
 
 function calcCareerStats(){
@@ -1382,7 +1437,20 @@ function calcCareerStats(){
       }
     });
   }
-  return{matches:myMatches.length,wins,draws,losses,goalsFor:gf,goalsAgainst:ga,cleanSheets,biggestWin,bestStreak,comebacks,trophies,champion,clWinner,treble,unbeatenSeason,transfers:(career.transfers||[]).length,squadSize:(career.players||[]).length,careerCount:data.careers.length};
+  const seasons=career.seasons?career.seasons.length:0;
+  const europaWinner=career.standings&&Object.values(career.standings).some(st=>st.europa==='Winnaar');
+  const confWinner=career.standings&&Object.values(career.standings).some(st=>st.conference==='Winnaar');
+  const cupWinner=career.standings&&Object.values(career.standings).some(st=>st.cup==='Winnaar'||st.facup==='Winnaar'||st.eflcup==='Winnaar');
+  const double=career.standings&&Object.values(career.standings).some(st=>{const champ=st.league==='1';const cup=st.cup==='Winnaar'||st.facup==='Winnaar'||st.eflcup==='Winnaar';return champ&&cup;});
+  const noDrawSeason=career.seasons&&career.seasons.some(s=>{const sm=myMatches.filter(m=>m.season===s);return sm.length>=10&&sm.every(m=>{const isH=m.home===career.team;const my=isH?m.homeScore:m.awayScore,th=isH?m.awayScore:m.homeScore;return my!==th;});});
+  const allWinSeason=career.seasons&&career.seasons.some(s=>{const sm=myMatches.filter(m=>m.season===s);return sm.length>=10&&sm.every(m=>{const isH=m.home===career.team;const my=isH?m.homeScore:m.awayScore,th=isH?m.awayScore:m.homeScore;return my>th;});});
+  let loseStreak=0,bestLoseStreak=0;
+  myMatches.forEach(m=>{const isH=m.home===career.team;const my=isH?m.homeScore:m.awayScore,th=isH?m.awayScore:m.homeScore;if(my<th){loseStreak++;if(loseStreak>bestLoseStreak)bestLoseStreak=loseStreak;}else loseStreak=0;});
+  const highScore=myMatches.some(m=>m.homeScore+m.awayScore>=8);
+  const nilNil=myMatches.some(m=>m.homeScore===0&&m.awayScore===0);
+  const awayWins=myMatches.filter(m=>m.away===career.team&&m.awayScore>m.homeScore).length;
+  const homeWins=myMatches.filter(m=>m.home===career.team&&m.homeScore>m.awayScore).length;
+  return{matches:myMatches.length,wins,draws,losses,goalsFor:gf,goalsAgainst:ga,cleanSheets,biggestWin,bestStreak,comebacks,trophies,champion,clWinner,treble,unbeatenSeason,transfers:(career.transfers||[]).length,squadSize:(career.players||[]).length,careerCount:data.careers.length,seasons,europaWinner,confWinner,cupWinner,double,noDrawSeason,allWinSeason,bestLoseStreak,highScore,nilNil,awayWins,homeWins,winPct:myMatches.length?Math.round(wins/myMatches.length*100):0};
 }
 
 function renderAchievements(){
