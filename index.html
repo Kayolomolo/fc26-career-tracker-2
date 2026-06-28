@@ -866,14 +866,11 @@ async function viewFriend(uid, name) {
     document.getElementById('viewing-banner').style.display = '';
     document.getElementById('viewing-name').textContent = name;
     document.querySelectorAll('.edit-only').forEach(el => el.style.display = 'none');
+    applyTheme();
     refreshAll();
     renderTeams();
     setSyncStatus('Bekijkt data van ' + name);
-
-    document.querySelector('.tab.active').classList.remove('active');
-    document.querySelectorAll('.panel.active').forEach(p => p.classList.remove('active'));
-    document.querySelector('[data-tab="matches"]').classList.add('active');
-    document.getElementById('panel-matches').classList.add('active');
+    switchTab('matches');
   } catch(e) {
     alert('Kon data niet laden');
   }
