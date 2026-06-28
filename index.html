@@ -82,17 +82,17 @@ textarea { width: 100%; min-height: 60px; resize: vertical; }
 .btn-outline { background: transparent; border: 1px solid #1e2a3a; color: #888; }
 .btn-outline:hover, .btn-outline:active { border-color: var(--accent); color: #ccc; }
 
-.match-card { background: #111827; border-radius: 10px; padding: 10px 14px; border: 1px solid #1e2a3a; margin-bottom: 6px; cursor: pointer; transition: border-color .2s; }
+.match-card { background: #111827; border-radius: 10px; padding: 10px 12px; border: 1px solid #1e2a3a; margin-bottom: 6px; cursor: pointer; transition: border-color .2s; }
 .match-card:active { border-color: var(--accent); }
-.match-top { display: flex; align-items: center; gap: 0; }
-.match-teams { display: flex; align-items: center; flex: 1; min-width: 0; }
-.match-team { display: flex; align-items: center; gap: 6px; flex: 1; min-width: 0; justify-content: flex-end; }
-.match-team span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; font-weight: 500; }
-.match-team.away { flex-direction: row-reverse; justify-content: flex-end; }
-.team-logo { width: 26px; height: 26px; border-radius: 50%; background: #1e2a3a; display: flex; align-items: center; justify-content: center; font-size: 9px; font-weight: 700; overflow: hidden; flex-shrink: 0; }
+.match-top { display: flex; align-items: center; }
+.match-teams { display: grid; grid-template-columns: 1fr 28px 60px 28px 1fr; align-items: center; gap: 6px; flex: 1; min-width: 0; }
+.match-team { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; font-weight: 500; }
+.match-team.home { text-align: right; }
+.match-team.away { text-align: left; }
+.team-logo { width: 28px; height: 28px; border-radius: 50%; background: #1e2a3a; display: flex; align-items: center; justify-content: center; font-size: 9px; font-weight: 700; overflow: hidden; flex-shrink: 0; }
 .team-logo img { width: 100%; height: 100%; object-fit: contain; }
-.match-score { font-size: 17px; font-weight: 700; padding: 0 10px; text-align: center; color: #fff; flex-shrink: 0; white-space: nowrap; }
-.match-meta { font-size: 10px; color: #666; text-align: right; flex-shrink: 0; margin-left: 10px; line-height: 1.4; }
+.match-score { font-size: 17px; font-weight: 700; text-align: center; color: #fff; white-space: nowrap; }
+.match-meta { font-size: 10px; color: #666; text-align: right; flex-shrink: 0; margin-left: 10px; line-height: 1.4; min-width: 70px; }
 .match-comp { color: var(--accent); font-size: 10px; }
 .match-note { margin-top: 8px; padding-top: 8px; border-top: 1px solid #1e2a3a; font-size: 13px; color: #999; font-style: italic; display: none; }
 .match-note.show { display: block; }
@@ -1043,9 +1043,11 @@ function renderMatches(){
     return`<div class="match-card" onclick="toggleNote(${m.id})">
       <div class="match-top">
         <div class="match-teams">
-          <div class="match-team"><span>${m.home}</span>${teamLogo(m.home)}</div>
+          <div class="match-team home">${m.home}</div>
+          ${teamLogo(m.home)}
           <div class="match-score" style="color:${resultColor}">${m.homeScore} - ${m.awayScore}</div>
-          <div class="match-team away"><span>${m.away}</span>${teamLogo(m.away)}</div>
+          ${teamLogo(m.away)}
+          <div class="match-team away">${m.away}</div>
         </div>
         <div class="match-meta"><div class="match-comp">${m.comp}</div><div>${m.round||('SD '+m.day)} | ${m.season}</div></div>
       </div>
