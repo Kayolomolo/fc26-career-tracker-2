@@ -776,17 +776,29 @@ function startRealtimeSync(uid) {
 
 auth.onAuthStateChanged(async user => {
   if (!user) {
-    document.getElementById('login-screen').style.display = '';
-    document.getElementById('main-app').style.display = 'none';
-    showExistingAccounts();
+    const lastUid = localStorage.getItem('fc26_last_uid');
+    const lastName = localStorage.getItem('fc26_username');
+    if (lastUid && lastName) {
+      auth.signInAnonymously().catch(e => {
+        document.getElementById('login-screen').style.display = '';
+        document.getElementById('main-app').style.display = 'none';
+        showExistingAccounts();
+      });
+    } else {
+      document.getElementById('login-screen').style.display = '';
+      document.getElementById('main-app').style.display = 'none';
+      showExistingAccounts();
+    }
     return;
   }
   const name = localStorage.getItem('fc26_username');
   if (!name) { document.getElementById('login-screen').style.display = ''; document.getElementById('main-app').style.display = 'none'; showExistingAccounts(); return; }
 
   const reloginUid = localStorage.getItem('fc26_relogin_uid');
-  const uid = reloginUid || user.uid;
+  const lastUid = localStorage.getItem('fc26_last_uid');
+  const uid = reloginUid || lastUid || user.uid;
   localStorage.removeItem('fc26_relogin_uid');
+  localStorage.setItem('fc26_last_uid', uid);
 
   await loadUserData(uid, name);
 });
@@ -1548,6 +1560,7 @@ async function loginWithCode(){
     const uid=userDoc.id;
     const name=profile.name||'Onbekend';
     localStorage.setItem('fc26_username',name);
+    localStorage.setItem('fc26_last_uid',uid);
     saveAccount(uid,name);
     if(!auth.currentUser){
       localStorage.setItem('fc26_relogin_uid',uid);
