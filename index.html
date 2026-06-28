@@ -1177,7 +1177,20 @@ renderNav();
 
 function refreshAll(){populateSeasons();populateComps();populateTeamSelects();populateStandingInputs();populatePlayers();renderMatches();renderCareerBar();renderStats();renderStandings();renderFormation();renderRatingsOverview();renderTransfers();}
 
-function initApp(){refreshAll();renderTeams();}
+function migrateSeasons(){
+  let changed=false;
+  data.careers.forEach(c=>{
+    const has2425=c.seasons.includes('24/25');
+    const matchesIn2425=(c.matches||[]).filter(m=>m.season==='24/25').length;
+    if(has2425&&matchesIn2425===0){
+      c.seasons=c.seasons.filter(s=>s!=='24/25');
+      if(!c.seasons.includes('25/26'))c.seasons.unshift('25/26');
+      changed=true;
+    }
+  });
+  if(changed)save();
+}
+function initApp(){migrateSeasons();refreshAll();renderTeams();}
 
 document.getElementById('login-name').addEventListener('keypress',function(e){if(e.key==='Enter')doLogin();});
 showExistingAccounts();
