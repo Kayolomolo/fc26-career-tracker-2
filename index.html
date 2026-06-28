@@ -700,8 +700,14 @@ function doLogin() {
   const name = document.getElementById('login-name').value.trim();
   if (!name) return alert('Vul je naam in');
   localStorage.setItem('fc26_username', name);
-  localStorage.removeItem('fc26_relogin_uid');
-  auth.signInAnonymously().catch(e => alert('Login mislukt: ' + e.message));
+  const existingUid = localStorage.getItem('fc26_last_uid');
+  if (existingUid) {
+    if (auth.currentUser) { loadUserData(existingUid, name); }
+    else { localStorage.setItem('fc26_relogin_uid', existingUid); auth.signInAnonymously().catch(e => alert('Login mislukt: ' + e.message)); }
+  } else {
+    localStorage.removeItem('fc26_relogin_uid');
+    auth.signInAnonymously().catch(e => alert('Login mislukt: ' + e.message));
+  }
 }
 
 function loginExisting(uid, name) {
