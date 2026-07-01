@@ -94,6 +94,11 @@ textarea { width: 100%; min-height: 60px; resize: vertical; }
 .match-score { font-size: 17px; font-weight: 700; text-align: center; color: #fff; white-space: nowrap; justify-self: center; }
 .match-meta { font-size: 10px; color: #666; text-align: center; line-height: 1.4; }
 .match-comp { color: var(--accent); font-size: 10px; }
+.agg-result { display: flex; align-items: center; justify-content: center; gap: 6px; width: fit-content; margin: 8px auto 0; padding: 4px 12px; border-radius: 20px; font-size: 11px; font-weight: 600; }
+.agg-result i { font-size: 11px; }
+.agg-result.through { background: #4CAF5022; color: #4CAF50; }
+.agg-result.out { background: #f4433622; color: #f44336; }
+.agg-result.tied { background: #FF980022; color: #FF9800; }
 .match-note { margin-top: 8px; padding-top: 8px; border-top: 1px solid #1e2a3a; font-size: 13px; color: #999; font-style: italic; display: none; }
 .match-note.show { display: block; }
 .match-expand { display: flex; align-items: center; justify-content: space-between; margin-top: 8px; padding-top: 8px; border-top: 1px solid #1e2a3a; }
@@ -1034,12 +1039,10 @@ function renderMatches(){
       const myTerug=m.home===myTeam?m.homeScore:m.awayScore;
       const theirTerug=m.home===myTeam?m.awayScore:m.homeScore;
       const totalMy=myHeen+myTerug;const totalTheir=theirHeen+theirTerug;
-      const aggColor=totalMy>totalTheir?'#4CAF50':totalMy<totalTheir?'#f44336':'#FF9800';
-      const opponent=m.home===myTeam?m.away:m.home;
-      aggHtml=`<div style="margin-top:8px;padding:8px 12px;background:#0a0e1a;border-radius:8px;display:flex;align-items:center;justify-content:space-between">
-        <span style="font-size:11px;color:#888">Totaal over 2 wedstrijden</span>
-        <span style="font-weight:700;color:${aggColor}">${esc(myTeam)} ${totalMy} - ${totalTheir} ${esc(opponent)}</span>
-      </div>`;
+      const outcome=totalMy>totalTheir?'through':totalMy<totalTheir?'out':'tied';
+      const outcomeIcon=outcome==='through'?'fa-circle-check':outcome==='out'?'fa-circle-xmark':'fa-scale-balanced';
+      const outcomeLabel=outcome==='through'?'Doorgaan':outcome==='out'?'Uitgeschakeld':'Gelijke stand';
+      aggHtml=`<div class="agg-result ${outcome}"><i class="fa-solid ${outcomeIcon}"></i> Totaal ${totalMy}-${totalTheir} &middot; ${outcomeLabel}</div>`;
     }
 
     return`<div class="match-card" onclick="toggleNote(${m.id})">
