@@ -1033,16 +1033,16 @@ function renderMatches(){
     let aggHtml='';
     const heen=findLegPair(m, allMatches);
     if(heen){
+      const scoreFor=(match,team)=>match.home===team?match.homeScore:match.awayScore;
+      const totalHomeTeam=scoreFor(heen,m.home)+scoreFor(m,m.home);
+      const totalAwayTeam=scoreFor(heen,m.away)+scoreFor(m,m.away);
       const myTeam=career.team;
-      const myHeen=heen.home===myTeam?heen.homeScore:heen.awayScore;
-      const theirHeen=heen.home===myTeam?heen.awayScore:heen.homeScore;
-      const myTerug=m.home===myTeam?m.homeScore:m.awayScore;
-      const theirTerug=m.home===myTeam?m.awayScore:m.homeScore;
-      const totalMy=myHeen+myTerug;const totalTheir=theirHeen+theirTerug;
+      const totalMy=m.home===myTeam?totalHomeTeam:totalAwayTeam;
+      const totalTheir=m.home===myTeam?totalAwayTeam:totalHomeTeam;
       const outcome=totalMy>totalTheir?'through':totalMy<totalTheir?'out':'tied';
       const outcomeIcon=outcome==='through'?'fa-circle-check':outcome==='out'?'fa-circle-xmark':'fa-scale-balanced';
       const outcomeLabel=outcome==='through'?'Doorgaan':outcome==='out'?'Uitgeschakeld':'Gelijke stand';
-      aggHtml=`<div class="agg-result ${outcome}"><i class="fa-solid ${outcomeIcon}"></i> Totaal ${totalMy}-${totalTheir} &middot; ${outcomeLabel}</div>`;
+      aggHtml=`<div class="agg-result ${outcome}"><i class="fa-solid ${outcomeIcon}"></i> Totaal ${totalHomeTeam}-${totalAwayTeam} &middot; ${outcomeLabel}</div>`;
     }
 
     return`<div class="match-card" onclick="toggleNote(${m.id})">
