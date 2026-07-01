@@ -243,7 +243,7 @@ textarea { width: 100%; min-height: 60px; resize: vertical; }
       <div id="existing-accounts" style="margin-top:16px"></div>
       <div style="margin-top:16px;padding-top:16px;border-top:1px solid #1e2a3a">
         <p style="font-size:12px;color:#888;margin-bottom:8px">Inloggen op ander apparaat? Vul je account code in:</p>
-        <input type="text" id="login-code" placeholder="Account code" maxlength="10" style="margin-bottom:8px;text-transform:uppercase;text-align:center;letter-spacing:2px">
+        <input type="text" id="login-code" placeholder="Account code" maxlength="16" style="margin-bottom:8px;text-transform:uppercase;text-align:center;letter-spacing:2px">
         <button class="btn btn-outline" style="width:100%" onclick="loginWithCode()">Inloggen met code</button>
       </div>
       <p style="margin-top:12px;font-size:11px;color:#444">Jij en je vrienden zien elkaars career modes</p>
@@ -671,10 +671,11 @@ function getSavedAccounts() {
   try { return JSON.parse(localStorage.getItem('fc26_accounts') || '[]'); } catch(e) { return []; }
 }
 
-function saveAccount(uid, name) {
+function saveAccount(uid, name, secret) {
   const accounts = getSavedAccounts();
   const existing = accounts.find(a => a.uid === uid);
-  if (existing) { existing.name = name; } else { accounts.push({ uid, name }); }
+  if (existing) { existing.name = name; if (secret) existing.secret = secret; }
+  else { accounts.push({ uid, name, secret: secret || null }); }
   localStorage.setItem('fc26_accounts', JSON.stringify(accounts));
 }
 
@@ -688,34 +689,42 @@ function showExistingAccounts() {
     </button>`).join('');
 }
 
-function doLogin() {
+async function doLogin() {
   const name = document.getElementById('login-name').value.trim();
   if (!name) return alert('Vul je naam in');
   localStorage.setItem('fc26_username', name);
-  const existingUid = localStorage.getItem('fc26_last_uid');
-  if (existingUid) {
-    if (auth.currentUser) { loadUserData(existingUid, name); }
-    else { localStorage.setItem('fc26_relogin_uid', existingUid); auth.signInAnonymously().catch(e => alert('Login mislukt: ' + e.message)); }
+  if (auth.currentUser) {
+    await loadUserData(auth.currentUser.uid, name);
   } else {
-    localStorage.removeItem('fc26_relogin_uid');
     auth.signInAnonymously().catch(e => alert('Login mislukt: ' + e.message));
   }
 }
 
-function loginExisting(uid, name) {
-  localStorage.setItem('fc26_username', name);
-  localStorage.setItem('fc26_relogin_uid', uid);
-  if (auth.currentUser) {
-    loadUserData(uid, name);
+async function loginExisting(uid, name) {
+  if (auth.currentUser && auth.currentUser.uid === uid) {
+    localStorage.setItem('fc26_username', name);
+    await loadUserData(uid, name);
+    return;
+  }
+  const acc = getSavedAccounts().find(a => a.uid === uid);
+  if (acc && acc.secret) {
+    localStorage.setItem('fc26_username', name);
+    try {
+      await auth.signInWithEmailAndPassword(emailForCode(acc.secret), acc.secret);
+    } catch(e) {
+      alert('Kon niet inloggen op dit account: ' + e.message);
+    }
   } else {
-    auth.signInAnonymously().catch(e => alert('Login mislukt: ' + e.message));
+    alert('Voor dit account is op dit apparaat geen code bekend, dus wisselen kan niet meer automatisch. Log in met de accountcode via "Inloggen met code" (te vinden op het apparaat waar dit account nog actief is, via "Mijn code").');
   }
 }
 
 function doLogout() {
+  const acc = getSavedAccounts().find(a => a.uid === currentUserId);
   document.getElementById('login-screen').style.display = '';
   document.getElementById('main-app').style.display = 'none';
   localStorage.removeItem('fc26_username');
+  if (acc && acc.secret) auth.signOut();
   showExistingAccounts();
 }
 
@@ -774,31 +783,14 @@ function startRealtimeSync(uid) {
 
 auth.onAuthStateChanged(async user => {
   if (!user) {
-    const lastUid = localStorage.getItem('fc26_last_uid');
-    const lastName = localStorage.getItem('fc26_username');
-    if (lastUid && lastName) {
-      auth.signInAnonymously().catch(e => {
-        document.getElementById('login-screen').style.display = '';
-        document.getElementById('main-app').style.display = 'none';
-        showExistingAccounts();
-      });
-    } else {
-      document.getElementById('login-screen').style.display = '';
-      document.getElementById('main-app').style.display = 'none';
-      showExistingAccounts();
-    }
+    document.getElementById('login-screen').style.display = '';
+    document.getElementById('main-app').style.display = 'none';
+    showExistingAccounts();
     return;
   }
   const name = localStorage.getItem('fc26_username');
   if (!name) { document.getElementById('login-screen').style.display = ''; document.getElementById('main-app').style.display = 'none'; showExistingAccounts(); return; }
-
-  const reloginUid = localStorage.getItem('fc26_relogin_uid');
-  const lastUid = localStorage.getItem('fc26_last_uid');
-  const uid = reloginUid || lastUid || user.uid;
-  localStorage.removeItem('fc26_relogin_uid');
-  localStorage.setItem('fc26_last_uid', uid);
-
-  await loadUserData(uid, name);
+  await loadUserData(user.uid, name);
 });
 
 async function saveToFirebase() {
@@ -1508,39 +1500,55 @@ function renderH2H(){
     ${statRow('Trofeeën',s1.trophies,s2.trophies,true)}`;
 }
 
-function generateCode(uid){
-  let hash=0;
-  for(let i=0;i<uid.length;i++){hash=((hash<<5)-hash)+uid.charCodeAt(i);hash|=0;}
-  return Math.abs(hash).toString(36).toUpperCase().slice(0,6);
+function generateSecretCode(){
+  const bytes=new Uint8Array(12);
+  crypto.getRandomValues(bytes);
+  return Array.from(bytes,b=>b.toString(36).padStart(2,'0')).join('').toUpperCase().slice(0,16);
 }
 
-function showMyCode(){
-  const code=generateCode(currentUserId);
-  db.collection('users').doc(currentUserId).set({code},{ merge:true });
-  alert('Jouw account code: '+code+'\n\nVul deze code in op je andere apparaat om op hetzelfde account in te loggen.');
+function emailForCode(code){
+  let h1=0,h2=0;
+  for(let i=0;i<code.length;i++){h1=(h1*31+code.charCodeAt(i))>>>0;h2=(h2*131+code.charCodeAt(i))>>>0;}
+  return 'u'+h1.toString(16)+h2.toString(16)+'@fc26tracker.app';
+}
+
+async function showMyCode(){
+  const existing=getSavedAccounts().find(a=>a.uid===currentUserId);
+  if(existing&&existing.secret){
+    alert('Jouw account code: '+existing.secret+'\n\nVul deze code in op je andere apparaat om op hetzelfde account in te loggen.');
+    return;
+  }
+  const secret=generateSecretCode();
+  const email=emailForCode(secret);
+  try{
+    const cred=firebase.auth.EmailAuthProvider.credential(email,secret);
+    await auth.currentUser.linkWithCredential(cred);
+    const name=document.getElementById('display-name').textContent;
+    saveAccount(currentUserId,name,secret);
+    alert('Jouw account code: '+secret+'\n\nBewaar deze goed! Vul hem in op je andere apparaat om op hetzelfde account in te loggen. Zonder deze code kun je hier later niet meer opnieuw inloggen.');
+  }catch(e){
+    console.error(e);
+    if(e.code==='auth/provider-already-linked'){
+      alert('Dit account heeft al eerder een code gekregen, maar die staat niet (meer) op dit apparaat opgeslagen. Log opnieuw in met die bestaande code via "Inloggen met code" om hem hier weer te bewaren.');
+    }else{
+      alert('Kon geen code aanmaken: '+e.message);
+    }
+  }
 }
 
 async function loginWithCode(){
   const code=document.getElementById('login-code').value.trim().toUpperCase();
   if(!code)return alert('Vul een code in');
+  const email=emailForCode(code);
   try{
-    const snap=await db.collection('users').where('code','==',code).get();
-    if(snap.empty)return alert('Code niet gevonden. Zorg dat je eerst op "Mijn code" hebt geklikt in de app.');
-    const userDoc=snap.docs[0];
-    const profile=userDoc.data();
-    const uid=userDoc.id;
-    const name=profile.name||'Onbekend';
+    const cred=await auth.signInWithEmailAndPassword(email,code);
+    const uid=cred.user.uid;
+    const profileDoc=await db.collection('users').doc(uid).get();
+    const name=(profileDoc.exists&&profileDoc.data().name)||'Onbekend';
     localStorage.setItem('fc26_username',name);
-    localStorage.setItem('fc26_last_uid',uid);
-    saveAccount(uid,name);
-    if(!auth.currentUser){
-      localStorage.setItem('fc26_relogin_uid',uid);
-      auth.signInAnonymously().catch(e=>alert('Login mislukt: '+e.message));
-    }else{
-      await loadUserData(uid,name);
-    }
+    saveAccount(uid,name,code);
   }catch(e){
-    console.error(e);alert('Kon code niet verifiëren');
+    console.error(e);alert('Code niet gevonden of onjuist.');
   }
 }
 
