@@ -60,6 +60,8 @@ header p { color: #888; margin-top: 4px; font-size: 13px; }
 .nav-item:hover, .nav-item:active { background: #1e2a3a; color: #e0e0e0; }
 .nav-item.active { color: var(--accent); font-weight: 600; }
 .nav-item i { width: 20px; text-align: center; font-size: 14px; }
+.nav-group-label { padding: 10px 16px 4px; font-size: 11px; font-weight: 600; color: #555; text-transform: uppercase; letter-spacing: 0.5px; }
+.nav-group-label:first-child { padding-top: 12px; }
 .panel { display: none; }
 .panel.active { display: block; }
 
@@ -1117,26 +1119,36 @@ function deleteTransfer(id){if(!career||isViewingFriend)return;career.transfers=
 function renderTransfers(){if(!career){document.getElementById('tf-list-in').innerHTML='<div class="no-data">Maak eerst een career mode aan</div>';document.getElementById('tf-list-out').innerHTML='';document.getElementById('tf-stats').innerHTML='';return;}if(!career.transfers)career.transfers=[];let transfers=career.transfers;const fs=document.getElementById('tf-filter-season').value;const ft=document.getElementById('tf-filter-type').value;if(fs)transfers=transfers.filter(t=>t.season===fs);if(ft)transfers=transfers.filter(t=>t.type===ft);const incoming=transfers.filter(t=>t.type==='buy'||t.type==='loan-in'||t.type==='free');const outgoing=transfers.filter(t=>t.type==='sell'||t.type==='loan-out');const spent=transfers.filter(t=>t.type==='buy'||t.type==='free').reduce((s,t)=>s+t.feeNum,0);const earned=transfers.filter(t=>t.type==='sell').reduce((s,t)=>s+t.feeNum,0);document.getElementById('tf-stats').innerHTML=`<div class="stat-card"><div class="value">${transfers.length}</div><div class="label">Transfers</div></div><div class="stat-card"><div class="value" style="color:#f44336">${formatFee(spent)}</div><div class="label">Uitgegeven</div></div><div class="stat-card"><div class="value" style="color:#4CAF50">${formatFee(earned)}</div><div class="label">Ontvangen</div></div><div class="stat-card"><div class="value" style="color:${earned>=spent?'#4CAF50':'#f44336'}">${earned>=spent?'+':''}${formatFee(Math.abs(earned-spent))}</div><div class="label">Saldo</div></div>`;function tfCard(t){const dir=(t.type==='sell'||t.type==='loan-out')?'Naar':'Van';return`<div class="match-card" style="margin-bottom:6px;cursor:default"><div style="display:flex;align-items:center;justify-content:space-between"><div style="display:flex;align-items:center;gap:12px"><i class="fa-solid ${TF_ICONS[t.type]}" style="color:${TF_COLORS[t.type]};font-size:18px;width:24px;text-align:center"></i><div><div style="font-weight:500">${esc(t.player)} ${t.position?'<span style="color:var(--accent);font-size:12px;font-weight:400">'+esc(t.position)+'</span>':''} ${t.rating?'<span style="color:#ffd700;font-size:12px;font-weight:400">'+t.rating+'</span>':''}</div><div style="font-size:12px;color:#888">${t.club?dir+' '+esc(t.club):''}</div></div></div><div style="text-align:right;display:flex;align-items:center;gap:12px"><div><div style="font-weight:600;color:${TF_COLORS[t.type]}">${t.fee?formatFee(t.feeNum):'Gratis'}</div><div style="font-size:11px;color:#666">${esc(t.season)} | ${TF_LABELS[t.type]}</div></div>${isViewingFriend?'':`<button class="btn btn-danger btn-sm" onclick="deleteTransfer(${t.id})"><i class="fa-solid fa-trash"></i></button>`}</div></div></div>`;}document.getElementById('tf-list-in').innerHTML=incoming.length?incoming.map(tfCard).join(''):'<div class="no-data" style="padding:20px">Geen inkomende transfers</div>';document.getElementById('tf-list-out').innerHTML=outgoing.length?outgoing.map(tfCard).join(''):'<div class="no-data" style="padding:20px">Geen uitgaande transfers</div>';}
 
 // Tabs
-const NAV_ITEMS = [
-  {tab:'matches',icon:'fa-gamepad',label:'Wedstrijden'},
-  {tab:'standings',icon:'fa-trophy',label:'Klassement'},
-  {tab:'stats',icon:'fa-chart-simple',label:'Statistieken'},
-  {tab:'squad',icon:'fa-users',label:'Opstelling'},
-  {tab:'transfers',icon:'fa-right-left',label:'Transfers'},
-  {tab:'progress',icon:'fa-chart-line',label:'Progressie'},
-  {tab:'achievements',icon:'fa-medal',label:'Badges'},
-  {tab:'season-review',icon:'fa-book',label:'Seizoensamenvatting'},
-  {tab:'h2h',icon:'fa-scale-balanced',label:'Head-to-Head'},
-  {tab:'leaderboard',icon:'fa-ranking-star',label:'Leaderboard'},
-  {tab:'friends',icon:'fa-user-group',label:'Vrienden'},
-  {tab:'teams',icon:'fa-shield-halved',label:'Teams beheren'},
+const NAV_GROUPS = [
+  { label:'Career', items:[
+    {tab:'matches',icon:'fa-gamepad',label:'Wedstrijden'},
+    {tab:'standings',icon:'fa-trophy',label:'Klassement'},
+    {tab:'squad',icon:'fa-users',label:'Opstelling'},
+    {tab:'transfers',icon:'fa-right-left',label:'Transfers'},
+  ]},
+  { label:'Inzichten', items:[
+    {tab:'stats',icon:'fa-chart-simple',label:'Statistieken'},
+    {tab:'progress',icon:'fa-chart-line',label:'Progressie'},
+    {tab:'season-review',icon:'fa-book',label:'Seizoensamenvatting'},
+    {tab:'achievements',icon:'fa-medal',label:'Badges'},
+  ]},
+  { label:'Sociaal', items:[
+    {tab:'leaderboard',icon:'fa-ranking-star',label:'Leaderboard'},
+    {tab:'h2h',icon:'fa-scale-balanced',label:'Head-to-Head'},
+    {tab:'friends',icon:'fa-user-group',label:'Vrienden'},
+  ]},
+  { label:'Beheer', items:[
+    {tab:'teams',icon:'fa-shield-halved',label:'Teams beheren'},
+  ]},
 ];
+const NAV_ITEMS = NAV_GROUPS.flatMap(g=>g.items);
 let currentTab = 'matches';
 
 function renderNav(){
   const dd = document.getElementById('nav-dropdown');
-  dd.innerHTML = NAV_ITEMS.map(n =>
-    `<div class="nav-item ${n.tab===currentTab?'active':''}" onclick="switchTab('${n.tab}')"><i class="fa-solid ${n.icon}"></i>${n.label}</div>`
+  dd.innerHTML = NAV_GROUPS.map(g =>
+    `<div class="nav-group-label">${g.label}</div>` +
+    g.items.map(n => `<div class="nav-item ${n.tab===currentTab?'active':''}" onclick="switchTab('${n.tab}')"><i class="fa-solid ${n.icon}"></i>${n.label}</div>`).join('')
   ).join('');
 }
 
