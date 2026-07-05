@@ -105,6 +105,7 @@ textarea { width: 100%; min-height: 60px; resize: vertical; }
 .match-note.show { display: block; }
 .match-expand { display: flex; align-items: center; justify-content: space-between; margin-top: 8px; padding-top: 8px; border-top: 1px solid #1e2a3a; }
 .match-expand .note-hint { font-size: 11px; color: #555; display: flex; align-items: center; gap: 4px; }
+.fav-btn.active { color: #f44336; border-color: #f4433655; }
 
 .standings-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px; margin-bottom: 16px; }
 .standing-card { background: #111827; border-radius: 10px; padding: 12px; border: 1px solid #1e2a3a; }
@@ -377,6 +378,15 @@ textarea { width: 100%; min-height: 60px; resize: vertical; }
         <select id="filter-comp" onchange="renderMatches()"><option value="">Alle competities</option></select>
       </div>
       <div id="matches-list"></div>
+    </div>
+
+    <!-- Favorieten -->
+    <div class="panel" id="panel-favorites">
+      <div class="card">
+        <h3><i class="fa-solid fa-heart"></i> Favoriete wedstrijden</h3>
+        <p style="font-size:13px;color:#888">Al je favorieten, van alle seizoenen bij elkaar. Tik op het hartje bij een wedstrijd om hem hier te bewaren.</p>
+      </div>
+      <div id="favorites-list"></div>
     </div>
 
     <!-- Klassement -->
@@ -947,7 +957,7 @@ function addMatch(){if(!career||isViewingFriend)return;
   if(type==='league'){day=parseInt(document.getElementById('match-day').value)||1;}
   else if(type==='euro'){round=document.getElementById('match-round').value;}
   else{round=document.getElementById('match-cup-round').value;}
-  const m={season:document.getElementById('match-season').value,comp,day,round,home:document.getElementById('match-home').value,away:document.getElementById('match-away').value,homeScore:parseInt(document.getElementById('score-home').value)||0,awayScore:parseInt(document.getElementById('score-away').value)||0,note:document.getElementById('match-note').value.trim(),id:Date.now()};
+  const m={season:document.getElementById('match-season').value,comp,day,round,home:document.getElementById('match-home').value,away:document.getElementById('match-away').value,homeScore:parseInt(document.getElementById('score-home').value)||0,awayScore:parseInt(document.getElementById('score-away').value)||0,note:document.getElementById('match-note').value.trim(),favorite:false,id:Date.now()};
   if(m.home===m.away)return alert('Thuis en uit mogen niet hetzelfde zijn');career.matches.unshift(m);save();
   if(type==='league')document.getElementById('match-day').value=parseInt(document.getElementById('match-day').value)+1;
   document.getElementById('match-note').value='';renderMatches();}
@@ -1009,6 +1019,59 @@ function findLegPair(m, allMatches){
   return allMatches.find(x=>x.id!==m.id&&x.season===m.season&&x.comp===m.comp&&x.round===heenRound&&[x.home,x.away].sort().join()==teams.join());
 }
 
+function buildMatchCard(m,allMatches){
+  const isMyHome=m.home===career.team;const isMyAway=m.away===career.team;
+  const myGoals=isMyHome?m.homeScore:m.awayScore;const theirGoals=isMyHome?m.awayScore:m.homeScore;
+  const resultColor=(isMyHome||isMyAway)?(myGoals>theirGoals?'#4CAF50':myGoals<theirGoals?'#f44336':'#FF9800'):'#fff';
+
+  let aggHtml='';
+  const heen=findLegPair(m, allMatches);
+  if(heen){
+    const scoreFor=(match,team)=>match.home===team?match.homeScore:match.awayScore;
+    const totalHomeTeam=scoreFor(heen,m.home)+scoreFor(m,m.home);
+    const totalAwayTeam=scoreFor(heen,m.away)+scoreFor(m,m.away);
+    const myTeam=career.team;
+    const totalMy=m.home===myTeam?totalHomeTeam:totalAwayTeam;
+    const totalTheir=m.home===myTeam?totalAwayTeam:totalHomeTeam;
+    const outcome=totalMy>totalTheir?'through':totalMy<totalTheir?'out':'tied';
+    const outcomeIcon=outcome==='through'?'fa-circle-check':outcome==='out'?'fa-circle-xmark':'fa-scale-balanced';
+    const outcomeLabel=outcome==='through'?'Doorgaan':outcome==='out'?'Uitgeschakeld':'Gelijke stand';
+    aggHtml=`<div class="agg-result ${outcome}"><i class="fa-solid ${outcomeIcon}"></i> Totaal ${totalHomeTeam}-${totalAwayTeam} &middot; ${outcomeLabel}</div>`;
+  }
+
+  return`<div class="match-card" onclick="toggleNote(${m.id})">
+    <div class="match-top">
+      <div class="match-teams">
+        <div class="match-team home">${esc(m.home)}</div>
+        ${teamLogo(m.home)}
+        <div class="match-score" style="color:${resultColor}">${m.homeScore} - ${m.awayScore}</div>
+        ${teamLogo(m.away)}
+        <div class="match-team away">${esc(m.away)}</div>
+      </div>
+      <div class="match-meta"><div class="match-comp">${esc(m.comp)}</div><div>${esc(m.round||('SD '+m.day))} | ${esc(m.season)}</div></div>
+    </div>
+    ${aggHtml}
+    ${m.note?`<div class="match-note" id="note-${m.id}"><i class="fa-solid fa-comment" style="margin-right:6px"></i>${esc(m.note)}</div>`:''}
+    <div class="match-expand">
+      <div class="note-hint">${m.note?'<i class="fa-solid fa-comment"></i> Tik voor notitie':''}</div>
+      <div style="display:flex;gap:4px">
+        <button class="btn btn-outline btn-sm fav-btn ${m.favorite?'active':''}" onclick="event.stopPropagation();toggleFavorite(${m.id})" title="Favoriet"><i class="fa-solid fa-heart"></i></button>
+        ${isViewingFriend?'':`<button class="btn btn-outline btn-sm" onclick="event.stopPropagation();editMatch(${m.id})"><i class="fa-solid fa-pen"></i></button><button class="btn btn-danger btn-sm" onclick="event.stopPropagation();deleteMatch(${m.id})"><i class="fa-solid fa-trash"></i></button>`}
+      </div>
+    </div>
+  </div>`;
+}
+
+function toggleFavorite(id){
+  if(!career||isViewingFriend)return;
+  const m=career.matches.find(x=>x.id===id);
+  if(!m)return;
+  m.favorite=!m.favorite;
+  save();
+  renderMatches();
+  renderFavorites();
+}
+
 function renderMatches(){
   const el=document.getElementById('matches-list');
   if(!career){el.innerHTML='<div class="no-data">Maak eerst een career mode aan</div>';return;}
@@ -1019,45 +1082,16 @@ function renderMatches(){
   if(fs)matches=matches.filter(m=>m.season===fs);
   if(fc)matches=matches.filter(m=>m.comp===fc);
   if(!matches.length){el.innerHTML='<div class="no-data">Nog geen wedstrijden</div>';return;}
-  el.innerHTML=matches.map(m=>{
-    const isMyHome=m.home===career.team;const isMyAway=m.away===career.team;
-    const myGoals=isMyHome?m.homeScore:m.awayScore;const theirGoals=isMyHome?m.awayScore:m.homeScore;
-    const resultColor=(isMyHome||isMyAway)?(myGoals>theirGoals?'#4CAF50':myGoals<theirGoals?'#f44336':'#FF9800'):'#fff';
+  el.innerHTML=matches.map(m=>buildMatchCard(m,allMatches)).join('');
+}
 
-    let aggHtml='';
-    const heen=findLegPair(m, allMatches);
-    if(heen){
-      const scoreFor=(match,team)=>match.home===team?match.homeScore:match.awayScore;
-      const totalHomeTeam=scoreFor(heen,m.home)+scoreFor(m,m.home);
-      const totalAwayTeam=scoreFor(heen,m.away)+scoreFor(m,m.away);
-      const myTeam=career.team;
-      const totalMy=m.home===myTeam?totalHomeTeam:totalAwayTeam;
-      const totalTheir=m.home===myTeam?totalAwayTeam:totalHomeTeam;
-      const outcome=totalMy>totalTheir?'through':totalMy<totalTheir?'out':'tied';
-      const outcomeIcon=outcome==='through'?'fa-circle-check':outcome==='out'?'fa-circle-xmark':'fa-scale-balanced';
-      const outcomeLabel=outcome==='through'?'Doorgaan':outcome==='out'?'Uitgeschakeld':'Gelijke stand';
-      aggHtml=`<div class="agg-result ${outcome}"><i class="fa-solid ${outcomeIcon}"></i> Totaal ${totalHomeTeam}-${totalAwayTeam} &middot; ${outcomeLabel}</div>`;
-    }
-
-    return`<div class="match-card" onclick="toggleNote(${m.id})">
-      <div class="match-top">
-        <div class="match-teams">
-          <div class="match-team home">${esc(m.home)}</div>
-          ${teamLogo(m.home)}
-          <div class="match-score" style="color:${resultColor}">${m.homeScore} - ${m.awayScore}</div>
-          ${teamLogo(m.away)}
-          <div class="match-team away">${esc(m.away)}</div>
-        </div>
-        <div class="match-meta"><div class="match-comp">${esc(m.comp)}</div><div>${esc(m.round||('SD '+m.day))} | ${esc(m.season)}</div></div>
-      </div>
-      ${aggHtml}
-      ${m.note?`<div class="match-note" id="note-${m.id}"><i class="fa-solid fa-comment" style="margin-right:6px"></i>${esc(m.note)}</div>`:''}
-      <div class="match-expand">
-        <div class="note-hint">${m.note?'<i class="fa-solid fa-comment"></i> Tik voor notitie':''}</div>
-        ${isViewingFriend?'':`<button class="btn btn-outline btn-sm" onclick="event.stopPropagation();editMatch(${m.id})" style="margin-right:4px"><i class="fa-solid fa-pen"></i></button><button class="btn btn-danger btn-sm" onclick="event.stopPropagation();deleteMatch(${m.id})"><i class="fa-solid fa-trash"></i></button>`}
-      </div>
-    </div>`;
-  }).join('');
+function renderFavorites(){
+  const el=document.getElementById('favorites-list');
+  if(!career){el.innerHTML='<div class="no-data">Maak eerst een career mode aan</div>';return;}
+  const allMatches=career.matches;
+  const favs=allMatches.filter(m=>m.favorite);
+  if(!favs.length){el.innerHTML='<div class="no-data">Nog geen favoriete wedstrijden. Tik op het hartje bij een wedstrijd om hem hier te bewaren.</div>';return;}
+  el.innerHTML=favs.map(m=>buildMatchCard(m,allMatches)).join('');
 }
 
 function saveStanding(){if(!career||isViewingFriend)return;const season=document.getElementById('standing-season').value;if(!season)return;const league=getLeague();const st={};league.trophies.forEach(t=>{st[t.id]=document.getElementById('pos-'+t.id)?.value||'';if(t.type==='pos'){const ptsEl=document.getElementById('pts-'+t.id);if(ptsEl)st[t.id+'_pts']=ptsEl.value||'';}});career.standings[season]=st;const next=nextSeasonName(season);if(next&&!career.seasons.includes(next)){career.seasons.push(next);populateSeasons();document.getElementById('match-season').value=next;document.getElementById('match-day').value=1;}save();renderStandings();alert('Opgeslagen!');}
@@ -1114,6 +1148,7 @@ function renderTransfers(){if(!career){document.getElementById('tf-list-in').inn
 const NAV_GROUPS = [
   { label:'Career', items:[
     {tab:'matches',icon:'fa-gamepad',label:'Wedstrijden'},
+    {tab:'favorites',icon:'fa-heart',label:'Favorieten'},
     {tab:'standings',icon:'fa-trophy',label:'Klassement'},
     {tab:'squad',icon:'fa-users',label:'Opstelling'},
     {tab:'transfers',icon:'fa-right-left',label:'Transfers'},
@@ -1162,6 +1197,7 @@ function switchTab(tab){
   const panel = document.getElementById('panel-'+tab);
   if(panel) panel.classList.add('active');
   renderNav();
+  if(tab==='favorites')renderFavorites();
   if(tab==='stats')renderStats();
   if(tab==='standings'){populateStandingInputs();renderStandings();}
   if(tab==='teams')renderTeams();
@@ -1184,7 +1220,7 @@ document.addEventListener('click',function(e){
 
 renderNav();
 
-function refreshAll(){populateSeasons();populateComps();populateTeamSelects();populateStandingInputs();populatePlayers();renderMatches();renderCareerBar();renderStats();renderStandings();renderFormation();renderRatingsOverview();renderTransfers();}
+function refreshAll(){populateSeasons();populateComps();populateTeamSelects();populateStandingInputs();populatePlayers();renderMatches();renderFavorites();renderCareerBar();renderStats();renderStandings();renderFormation();renderRatingsOverview();renderTransfers();}
 
 function migrateSeasons(){
   let changed=false;
