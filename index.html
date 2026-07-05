@@ -210,6 +210,10 @@ textarea { width: 100%; min-height: 60px; resize: vertical; }
 .badge-icon.locked { background: #1e2a3a; }
 .badge-info h4 { font-size: 14px; font-weight: 600; margin-bottom: 2px; }
 .badge-info p { font-size: 12px; color: #888; }
+.badge-progress { margin-top: 6px; }
+.badge-progress .bar-track { background: #1e2a3a; border-radius: 6px; height: 6px; overflow: hidden; }
+.badge-progress .bar-fill { background: var(--accent); height: 100%; border-radius: 6px; }
+.badge-progress .bar-label { font-size: 11px; color: #666; margin-top: 3px; }
 
 .review-card { background: #111827; border-radius: 12px; padding: 16px; border: 1px solid #1e2a3a; margin-bottom: 12px; }
 .review-card h4 { font-size: 13px; color: var(--accent); margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.5px; }
@@ -1070,6 +1074,7 @@ function toggleFavorite(id){
   save();
   renderMatches();
   renderFavorites();
+  if(document.getElementById('review-season')&&document.getElementById('review-season').value)renderSeasonReview();
 }
 
 function renderMatches(){
@@ -1382,6 +1387,15 @@ function calcCareerStats(){
   return{matches:myMatches.length,wins,draws,losses,goalsFor:gf,goalsAgainst:ga,cleanSheets,biggestWin,bestStreak,comebacks,trophies,champion,clWinner,treble,unbeatenSeason,transfers:(career.transfers||[]).length,squadSize:(career.players||[]).length,careerCount:data.careers.length,seasons,europaWinner,confWinner,cupWinner,double,noDrawSeason,allWinSeason,bestLoseStreak,highScore,nilNil,awayWins,homeWins,winPct:myMatches.length?Math.round(wins/myMatches.length*100):0};
 }
 
+function achievementProgress(a,stats){
+  const m=a.check.toString().match(/s\.(\w+)\s*>=\s*(\d+)/);
+  if(!m)return null;
+  const field=m[1],target=parseInt(m[2]);
+  const current=stats[field];
+  if(typeof current!=='number'||target<=0)return null;
+  return{current,target,pct:Math.max(0,Math.min(100,Math.round(current/target*100)))};
+}
+
 function renderAchievements(){
   const el=document.getElementById('achievements-list');
   if(!career){el.innerHTML='<div class="no-data">Maak eerst een career mode aan</div>';return;}
@@ -1391,7 +1405,11 @@ function renderAchievements(){
   el.innerHTML=`<div style="margin-bottom:16px;font-size:14px;color:#888">${unlocked.length}/${ACHIEVEMENTS.length} badges behaald</div>`+
     unlocked.map(a=>`<div class="badge unlocked"><div class="badge-icon ${a.tier}"><i class="fa-solid ${a.icon}"></i></div><div class="badge-info"><h4>${a.name}</h4><p>${a.desc}</p></div></div>`).join('')+
     (locked.length?`<div style="margin:20px 0 10px;font-size:14px;color:#555">Nog te behalen:</div>`:'')+
-    locked.map(a=>`<div class="badge locked"><div class="badge-icon locked"><i class="fa-solid ${a.icon}"></i></div><div class="badge-info"><h4>${a.name}</h4><p>${a.desc}</p></div></div>`).join('');
+    locked.map(a=>{
+      const prog=achievementProgress(a,stats);
+      const progHtml=prog?`<div class="badge-progress"><div class="bar-track"><div class="bar-fill" style="width:${prog.pct}%"></div></div><div class="bar-label">${prog.current}/${prog.target}</div></div>`:'';
+      return`<div class="badge locked"><div class="badge-icon locked"><i class="fa-solid ${a.icon}"></i></div><div class="badge-info"><h4>${a.name}</h4><p>${a.desc}</p>${progHtml}</div></div>`;
+    }).join('');
 }
 
 // ============================================
@@ -1463,7 +1481,9 @@ function renderSeasonReview(){
     <div class="review-card"><h4>Transfers</h4>
       <div class="review-highlight"><span class="rh-label">Inkomend</span><span class="rh-value">${bought.length} spelers</span></div>
       <div class="review-highlight"><span class="rh-label">Uitgaand</span><span class="rh-value">${sold.length} spelers</span></div>
-    </div>`;
+    </div>
+    <h3 style="margin:20px 0 12px;font-size:16px"><i class="fa-solid fa-heart" style="color:#f44336;margin-right:6px"></i>Favoriete wedstrijden dit seizoen</h3>
+    ${(()=>{const favs=myMatches.filter(m=>m.favorite);return favs.length?favs.map(m=>buildMatchCard(m,career.matches)).join(''):'<div class="no-data">Geen favorieten in dit seizoen</div>';})()}`;
 }
 
 // ============================================
