@@ -143,7 +143,21 @@ textarea { width: 100%; min-height: 60px; resize: vertical; }
   .standings-grid { grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); }
 }
 
-.pitch { position: relative; width: 100%; max-width: 500px; margin: 0 auto 20px; aspect-ratio: 68/100; background: #1a5e1a; border-radius: 12px; border: 2px solid #2a7e2a; overflow: visible; }
+.squad-layout { display: flex; flex-direction: column; align-items: center; gap: 16px; margin-bottom: 20px; }
+.pitch { position: relative; width: 100%; max-width: 500px; aspect-ratio: 68/100; background: #1a5e1a; border-radius: 12px; border: 2px solid #2a7e2a; overflow: visible; flex-shrink: 0; }
+.manager-card { background: #111827; border: 1px solid #1e2a3a; border-radius: 12px; padding: 16px; text-align: center; width: 100%; max-width: 220px; }
+.manager-label { font-size: 10px; color: #888; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 10px; }
+.manager-photo { width: 100px; height: 100px; margin: 0 auto 10px; border-radius: 50%; overflow: hidden; background: #1a3a1a; border: 2px solid var(--accent); display: flex; align-items: center; justify-content: center; cursor: pointer; transition: border-color .2s; }
+.manager-photo:hover { border-color: var(--accent2); }
+.manager-photo.rect { width: 120px; height: 160px; border-radius: 10px; }
+.manager-photo img { width: 100%; height: 100%; object-fit: cover; }
+.manager-photo i { font-size: 30px; color: #4a7a5a; }
+.manager-name { font-size: 15px; font-weight: 600; }
+.manager-name.empty { color: #555; font-weight: 400; font-style: italic; font-size: 13px; }
+
+@media (min-width: 700px) {
+  .squad-layout { flex-direction: row; align-items: flex-start; justify-content: center; }
+}
 .pitch::before { content: ''; position: absolute; top: 50%; left: 10%; right: 10%; height: 1px; background: rgba(255,255,255,0.2); }
 .pitch::after { content: ''; position: absolute; top: 35%; left: 25%; right: 25%; bottom: 35%; border: 1px solid rgba(255,255,255,0.15); border-radius: 50%; pointer-events: none; }
 .pitch-player { position: absolute; transform: translate(-50%,-50%); text-align: center; cursor: pointer; width: 64px; }
@@ -436,9 +450,15 @@ textarea { width: 100%; min-height: 60px; resize: vertical; }
             <option>4-3-3</option><option>4-4-2</option><option>4-2-3-1</option><option>3-5-2</option><option>4-1-4-1</option><option>5-3-2</option><option>3-4-3</option>
           </select>
         </div>
-        <button class="btn btn-primary btn-sm" onclick="showAddPlayer()"><i class="fa-solid fa-plus"></i> Speler toevoegen</button>
+        <div class="form-row">
+          <button class="btn btn-primary btn-sm" onclick="showAddPlayer()"><i class="fa-solid fa-plus"></i> Speler toevoegen</button>
+          <button class="btn btn-outline btn-sm" onclick="showManagerModal()"><i class="fa-solid fa-user-tie"></i> Manager instellen</button>
+        </div>
       </div>
-      <div class="pitch" id="pitch"></div>
+      <div class="squad-layout">
+        <div class="pitch" id="pitch"></div>
+        <div class="manager-card" id="manager-card"></div>
+      </div>
       <h3 style="margin:16px 0 12px;font-size:16px">Bank &amp; reserves</h3>
       <div class="player-list" id="bench-list"></div>
     </div>
@@ -603,6 +623,26 @@ textarea { width: 100%; min-height: 60px; resize: vertical; }
     <div style="display:flex;gap:8px;justify-content:flex-end">
       <button class="btn btn-outline" onclick="closeModal('import-modal')">Annuleren</button>
       <button class="btn btn-primary" onclick="doImport()"><i class="fa-solid fa-file-import"></i> Importeren</button>
+    </div>
+  </div>
+</div>
+
+<!-- Manager modal -->
+<div class="modal-overlay" id="manager-modal">
+  <div class="modal">
+    <h3><i class="fa-solid fa-user-tie"></i> Manager instellen</h3>
+    <div class="form-row"><label>Naam</label><input type="text" id="mgr-name" placeholder="Naam manager" style="flex:1"></div>
+    <div class="form-row"><label>Foto</label><input type="file" id="mgr-photo" accept="image/*" style="font-size:13px;color:#888;flex:1"></div>
+    <div class="form-row"><label>Stijl</label>
+      <select id="mgr-style" style="flex:1">
+        <option value="circle">Rond (alleen hoofd)</option>
+        <option value="rect">Rechthoek (hele foto)</option>
+      </select>
+    </div>
+    <p style="font-size:11px;color:#666;margin-top:4px">Tip: upload de foto opnieuw als je van stijl wisselt, voor het beste resultaat.</p>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px">
+      <button class="btn btn-outline" onclick="closeModal('manager-modal')">Annuleren</button>
+      <button class="btn btn-primary" onclick="saveManager()">Opslaan</button>
     </div>
   </div>
 </div>
@@ -1109,7 +1149,8 @@ function renderStandings(){const el=document.getElementById('standings-grid');if
 function renderStats(){if(!career){document.getElementById('stats-grid').innerHTML='';document.getElementById('recent-results').innerHTML='<div class="no-data">Maak eerst een career mode aan</div>';return;}const season=document.getElementById('stats-season').value;const comp=document.getElementById('stats-comp').value;let matches=career.matches;if(season)matches=matches.filter(m=>m.season===season);if(comp)matches=matches.filter(m=>m.comp===comp);const myMatches=matches.filter(m=>m.home===career.team||m.away===career.team);let wins=0,draws=0,losses=0,gf=0,ga=0,wStreak=0,bestWStreak=0,ubStreak=0,bestUbStreak=0;myMatches.forEach(m=>{const isHome=m.home===career.team;const my=isHome?m.homeScore:m.awayScore,their=isHome?m.awayScore:m.homeScore;gf+=my;ga+=their;if(my>their){wins++;wStreak++;ubStreak++;if(wStreak>bestWStreak)bestWStreak=wStreak;}else if(my<their){losses++;wStreak=0;ubStreak=0;}else{draws++;wStreak=0;ubStreak++;} if(ubStreak>bestUbStreak)bestUbStreak=ubStreak;});document.getElementById('stats-grid').innerHTML=`<div class="stat-card"><div class="value">${myMatches.length}</div><div class="label">Wedstrijden</div></div><div class="stat-card"><div class="value" style="color:#4CAF50">${wins}</div><div class="label">Gewonnen</div></div><div class="stat-card"><div class="value" style="color:#FF9800">${draws}</div><div class="label">Gelijk</div></div><div class="stat-card"><div class="value" style="color:#f44336">${losses}</div><div class="label">Verloren</div></div><div class="stat-card"><div class="value">${gf}</div><div class="label">Goals voor</div></div><div class="stat-card"><div class="value">${ga}</div><div class="label">Goals tegen</div></div><div class="stat-card"><div class="value" style="color:#4CAF50">${bestWStreak}</div><div class="label">Winstreek</div></div><div class="stat-card"><div class="value" style="color:var(--accent)">${bestUbStreak}</div><div class="label">Ongeslagen reeks</div></div><div class="stat-card"><div class="value">${myMatches.length?Math.round(wins/myMatches.length*100):0}%</div><div class="label">Win %</div></div>`;const recent=myMatches.slice(0,5);document.getElementById('recent-results').innerHTML=recent.length?recent.map(m=>{const isMyH=m.home===career.team;const myG=isMyH?m.homeScore:m.awayScore,thG=isMyH?m.awayScore:m.homeScore;const rc=myG>thG?'#4CAF50':myG<thG?'#f44336':'#FF9800';return`<div class="match-card" style="margin-bottom:6px;cursor:default"><div class="match-top"><div class="match-teams"><div class="match-team home">${esc(m.home)}</div>${teamLogo(m.home)}<div class="match-score" style="color:${rc}">${m.homeScore} - ${m.awayScore}</div>${teamLogo(m.away)}<div class="match-team away">${esc(m.away)}</div></div></div><div class="match-meta"><div class="match-comp">${esc(m.comp)}</div><div>${esc(m.round||('SD '+m.day))} | ${esc(m.season)}</div></div></div>`;}).join(''):'<div class="no-data">Geen wedstrijden</div>';}
 
 function showAddPlayer(){if(!career||isViewingFriend)return;document.getElementById('pl-name').value='';document.getElementById('pl-rating').value='';document.getElementById('pl-photo').value='';showModal('player-modal');}
-function resizeImg(file,cb){const reader=new FileReader();reader.onload=function(ev){const img=new Image();img.onload=function(){const c=document.createElement('canvas'),s=128;c.width=s;c.height=s;const ctx=c.getContext('2d'),sc=Math.max(s/img.width,s/img.height),w=img.width*sc,h=img.height*sc;ctx.drawImage(img,(s-w)/2,(s-h)/2,w,h);cb(c.toDataURL('image/jpeg',0.7));};img.src=ev.target.result;};reader.readAsDataURL(file);}
+function resizeImgAspect(file,targetW,targetH,cb){const reader=new FileReader();reader.onload=function(ev){const img=new Image();img.onload=function(){const c=document.createElement('canvas');c.width=targetW;c.height=targetH;const ctx=c.getContext('2d'),sc=Math.max(targetW/img.width,targetH/img.height),w=img.width*sc,h=img.height*sc;ctx.drawImage(img,(targetW-w)/2,(targetH-h)/2,w,h);cb(c.toDataURL('image/jpeg',0.75));};img.src=ev.target.result;};reader.readAsDataURL(file);}
+function resizeImg(file,cb){resizeImgAspect(file,128,128,cb);}
 function savePlayer(){if(!career||isViewingFriend)return;const name=document.getElementById('pl-name').value.trim();if(!name)return alert('Vul een naam in');const position=document.getElementById('pl-position').value;const rating=parseInt(document.getElementById('pl-rating').value)||70;const starter=document.getElementById('pl-starter').value==='1';const file=document.getElementById('pl-photo').files[0];function finish(photo){const p={id:'p'+Date.now(),name,position,rating,starter,photo:photo||''};career.players.push(p);if(!career.ratings)career.ratings={};if(!career.ratings[p.id])career.ratings[p.id]=[];if(career.seasons.length)career.ratings[p.id].push({season:career.seasons[0],rating});save();closeModal('player-modal');renderFormation();populatePlayers();}if(file)resizeImg(file,finish);else finish('');}
 function deletePlayer(id){if(!career||isViewingFriend||!confirm('Speler verwijderen?'))return;career.players=career.players.filter(p=>p.id!==id);if(career.ratings)delete career.ratings[id];save();renderFormation();populatePlayers();}
 function changePlayerPhoto(id){if(isViewingFriend)return;const input=document.createElement('input');input.type='file';input.accept='image/*';input.onchange=function(e){const file=e.target.files[0];if(!file)return;resizeImg(file,function(d){const p=career.players.find(x=>x.id===id);if(p){p.photo=d;save();renderFormation();}});};input.click();}
@@ -1122,7 +1163,53 @@ function movePlayerToSpot(playerId){if(!career||isViewingFriend)return;const for
 
 function getSpotAssignments(){if(!career)return{};const form=career.formation||'4-3-3';const spots=FORMATIONS[form]||FORMATIONS['4-3-3'];const starters=career.players.filter(p=>p.starter);const assigned={};const used=new Set();starters.filter(p=>typeof p.spotIndex==='number'&&p.spotIndex>=0&&p.spotIndex<spots.length).forEach(p=>{if(!assigned[p.spotIndex]){assigned[p.spotIndex]=p;used.add(p.id);}});const posMap={'GK':['GK'],'LB':['LB','LWB'],'RB':['RB','RWB'],'CB':['CB'],'LWB':['LWB','LB'],'RWB':['RWB','RB'],'CDM':['CDM','CM'],'CM':['CM','CDM','CAM'],'CAM':['CAM','CM','CF'],'LM':['LM','LW'],'RM':['RM','RW'],'LW':['LW','LM','ST'],'RW':['RW','RM','ST'],'ST':['ST','CF','LW','RW'],'CF':['CF','ST','CAM']};const unassigned=starters.filter(p=>!used.has(p.id));spots.forEach((spot,i)=>{if(assigned[i])return;const compatible=posMap[spot.p]||[spot.p];const match=unassigned.find(p=>compatible.includes(p.position));if(match){assigned[i]=match;used.add(match.id);unassigned.splice(unassigned.indexOf(match),1);}});spots.forEach((spot,i)=>{if(assigned[i]||!unassigned.length)return;assigned[i]=unassigned.shift();used.add(assigned[i].id);});return assigned;}
 
-function renderFormation(){if(!career){document.getElementById('pitch').innerHTML='<div class="no-data" style="padding:60px 20px">Maak eerst een career mode aan</div>';document.getElementById('bench-list').innerHTML='';return;}const form=career.formation||'4-3-3';document.getElementById('formation-select').value=form;const spots=FORMATIONS[form]||FORMATIONS['4-3-3'];const assigned=getSpotAssignments();const bench=career.players.filter(p=>!p.starter);let html='';spots.forEach((spot,i)=>{const player=assigned[i];if(player){const photoHtml=player.photo?`<img src="${player.photo}">`:esc(getInitials(player.name));const menuOpen=openMenuId===player.id;html+=`<div class="pitch-player" style="left:${spot.x}%;top:${spot.y}%;${menuOpen?'z-index:60':''}" onclick="showPlayerMenu('${player.id}',event)"><div class="player-photo">${photoHtml}</div><div class="player-name">${esc(player.name)}</div><div class="player-rating">${player.rating} | ${spot.p}</div>${menuOpen?`<div class="player-menu" onclick="event.stopPropagation()"><div onclick="changePlayerPhoto('${player.id}');openMenuId=null;"><i class="fa-solid fa-camera"></i> Foto wijzigen</div><div onclick="movePlayerToSpot('${player.id}')"><i class="fa-solid fa-arrows-up-down-left-right"></i> Verplaatsen</div><div onclick="toggleStarter('${player.id}')"><i class="fa-solid fa-arrow-down"></i> Naar bank</div><div onclick="deletePlayer('${player.id}')"><i class="fa-solid fa-trash" style="color:#f44336"></i> Verwijderen</div></div>`:''}</div>`;}else{html+=`<div class="pitch-player" style="left:${spot.x}%;top:${spot.y}%"><div class="player-photo" style="opacity:0.3">+</div><div class="player-name" style="opacity:0.4">${spot.p}</div></div>`;}});document.getElementById('pitch').innerHTML=html;document.getElementById('bench-list').innerHTML=bench.length?bench.map(p=>`<div class="player-card"><div class="p-photo" style="cursor:pointer" onclick="changePlayerPhoto('${p.id}')">${p.photo?`<img src="${p.photo}">`:esc(getInitials(p.name))}</div><div class="p-info"><div class="p-name">${esc(p.name)}</div><div class="p-detail">${p.position} | ${p.rating} OVR</div></div>${isViewingFriend?'':`<button class="btn btn-outline btn-sm" onclick="movePlayerToSpot('${p.id}')" title="Naar positie"><i class="fa-solid fa-arrow-up"></i></button><button class="btn btn-danger btn-sm" onclick="deletePlayer('${p.id}')"><i class="fa-solid fa-trash"></i></button>`}</div>`).join(''):'<div class="no-data" style="padding:20px">Geen spelers op de bank</div>';}
+function renderFormation(){if(!career){document.getElementById('pitch').innerHTML='<div class="no-data" style="padding:60px 20px">Maak eerst een career mode aan</div>';document.getElementById('bench-list').innerHTML='';document.getElementById('manager-card').innerHTML='';return;}const form=career.formation||'4-3-3';document.getElementById('formation-select').value=form;const spots=FORMATIONS[form]||FORMATIONS['4-3-3'];const assigned=getSpotAssignments();const bench=career.players.filter(p=>!p.starter);let html='';spots.forEach((spot,i)=>{const player=assigned[i];if(player){const photoHtml=player.photo?`<img src="${player.photo}">`:esc(getInitials(player.name));const menuOpen=openMenuId===player.id;html+=`<div class="pitch-player" style="left:${spot.x}%;top:${spot.y}%;${menuOpen?'z-index:60':''}" onclick="showPlayerMenu('${player.id}',event)"><div class="player-photo">${photoHtml}</div><div class="player-name">${esc(player.name)}</div><div class="player-rating">${player.rating} | ${spot.p}</div>${menuOpen?`<div class="player-menu" onclick="event.stopPropagation()"><div onclick="changePlayerPhoto('${player.id}');openMenuId=null;"><i class="fa-solid fa-camera"></i> Foto wijzigen</div><div onclick="movePlayerToSpot('${player.id}')"><i class="fa-solid fa-arrows-up-down-left-right"></i> Verplaatsen</div><div onclick="toggleStarter('${player.id}')"><i class="fa-solid fa-arrow-down"></i> Naar bank</div><div onclick="deletePlayer('${player.id}')"><i class="fa-solid fa-trash" style="color:#f44336"></i> Verwijderen</div></div>`:''}</div>`;}else{html+=`<div class="pitch-player" style="left:${spot.x}%;top:${spot.y}%"><div class="player-photo" style="opacity:0.3">+</div><div class="player-name" style="opacity:0.4">${spot.p}</div></div>`;}});document.getElementById('pitch').innerHTML=html;document.getElementById('bench-list').innerHTML=bench.length?bench.map(p=>`<div class="player-card"><div class="p-photo" style="cursor:pointer" onclick="changePlayerPhoto('${p.id}')">${p.photo?`<img src="${p.photo}">`:esc(getInitials(p.name))}</div><div class="p-info"><div class="p-name">${esc(p.name)}</div><div class="p-detail">${p.position} | ${p.rating} OVR</div></div>${isViewingFriend?'':`<button class="btn btn-outline btn-sm" onclick="movePlayerToSpot('${p.id}')" title="Naar positie"><i class="fa-solid fa-arrow-up"></i></button><button class="btn btn-danger btn-sm" onclick="deletePlayer('${p.id}')"><i class="fa-solid fa-trash"></i></button>`}</div>`).join(''):'<div class="no-data" style="padding:20px">Geen spelers op de bank</div>';renderManager();}
+
+function renderManager(){
+  const el=document.getElementById('manager-card');
+  if(!el)return;
+  if(!career){el.innerHTML='';return;}
+  const mgr=career.manager||{};
+  const style=mgr.style==='rect'?'rect':'circle';
+  const photoHtml=mgr.photo?`<img src="${mgr.photo}">`:'<i class="fa-solid fa-user-tie"></i>';
+  const clickAttr=isViewingFriend?'':' onclick="showManagerModal()"';
+  el.innerHTML=`
+    <div class="manager-label">Manager</div>
+    <div class="manager-photo ${style==='rect'?'rect':''}"${clickAttr}>${photoHtml}</div>
+    <div class="manager-name ${mgr.name?'':'empty'}">${mgr.name?esc(mgr.name):'Nog geen manager'}</div>
+  `;
+}
+
+function showManagerModal(){
+  if(!career||isViewingFriend)return;
+  const mgr=career.manager||{};
+  document.getElementById('mgr-name').value=mgr.name||'';
+  document.getElementById('mgr-style').value=mgr.style==='rect'?'rect':'circle';
+  document.getElementById('mgr-photo').value='';
+  showModal('manager-modal');
+}
+
+function saveManager(){
+  if(!career||isViewingFriend)return;
+  const name=document.getElementById('mgr-name').value.trim();
+  const style=document.getElementById('mgr-style').value;
+  const file=document.getElementById('mgr-photo').files[0];
+  if(!career.manager)career.manager={};
+  function finish(photo){
+    career.manager.name=name;
+    career.manager.style=style;
+    if(photo)career.manager.photo=photo;
+    save();
+    closeModal('manager-modal');
+    renderManager();
+  }
+  if(file){
+    if(style==='rect')resizeImgAspect(file,240,320,finish);
+    else resizeImg(file,finish);
+  }else{
+    finish('');
+  }
+}
 function toggleStarter(id){if(!career||isViewingFriend)return;const p=career.players.find(x=>x.id===id);if(p){p.starter=!p.starter;p.spotIndex=-1;openMenuId=null;save();renderFormation();}}
 function changeFormation(val){if(career&&!isViewingFriend){career.formation=val;save();renderFormation();}}
 
