@@ -1009,7 +1009,7 @@ function addMatch(){if(!career||isViewingFriend)return;
   if(type==='league')document.getElementById('match-day').value=parseInt(document.getElementById('match-day').value)+1;
   document.getElementById('match-note').value='';renderMatches();}
 function deleteMatch(id){if(!career||isViewingFriend)return;career.matches=career.matches.filter(m=>m.id!==id);save();renderMatches();}
-function toggleNote(id){const el=document.getElementById('note-'+id);if(el)el.classList.toggle('show');}
+function toggleNote(cardEl){const note=cardEl.querySelector('.match-note');if(note)note.classList.toggle('show');}
 
 function editMatch(id){
   if(!career||isViewingFriend)return;
@@ -1086,7 +1086,7 @@ function buildMatchCard(m,allMatches){
     aggHtml=`<div class="agg-result ${outcome}"><i class="fa-solid ${outcomeIcon}"></i> Totaal ${totalHomeTeam}-${totalAwayTeam} &middot; ${outcomeLabel}</div>`;
   }
 
-  return`<div class="match-card" onclick="toggleNote(${m.id})">
+  return`<div class="match-card" onclick="toggleNote(this)">
     <div class="match-top">
       <div class="match-teams">
         <div class="match-team home">${esc(m.home)}</div>
@@ -1098,7 +1098,7 @@ function buildMatchCard(m,allMatches){
       <div class="match-meta"><div class="match-comp">${esc(m.comp)}</div><div>${esc(m.round||('SD '+m.day))} | ${esc(m.season)}</div></div>
     </div>
     ${aggHtml}
-    ${m.note?`<div class="match-note" id="note-${m.id}"><i class="fa-solid fa-comment" style="margin-right:6px"></i>${esc(m.note)}</div>`:''}
+    ${m.note?`<div class="match-note"><i class="fa-solid fa-comment" style="margin-right:6px"></i>${esc(m.note)}</div>`:''}
     <div class="match-expand">
       <div class="note-hint">${m.note?'<i class="fa-solid fa-comment"></i> Tik voor notitie':''}</div>
       <div style="display:flex;gap:4px">
