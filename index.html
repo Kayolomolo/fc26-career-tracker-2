@@ -125,6 +125,9 @@ textarea { width: 100%; min-height: 60px; resize: vertical; }
 
 .filter-row { display: flex; gap: 6px; margin-bottom: 12px; flex-wrap: wrap; }
 .filter-row select { font-size: 13px; padding: 8px; min-width: 120px; }
+.filter-row .search-input { font-size: 13px; padding: 8px 12px 8px 32px; flex: 1; min-width: 160px; background-image: none; }
+.filter-row .search-wrap { position: relative; flex: 1; min-width: 160px; }
+.filter-row .search-wrap i { position: absolute; left: 11px; top: 50%; transform: translateY(-50%); color: #666; font-size: 13px; pointer-events: none; }
 .no-data { text-align: center; padding: 30px; color: #555; font-size: 14px; }
 
 .standing-inputs { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px; }
@@ -395,6 +398,10 @@ textarea { width: 100%; min-height: 60px; resize: vertical; }
         </div>
       </div>
       <div class="filter-row">
+        <div class="search-wrap">
+          <i class="fa-solid fa-magnifying-glass"></i>
+          <input type="text" id="filter-team" class="search-input" placeholder="Zoek op team..." oninput="renderMatches()">
+        </div>
         <select id="filter-season" onchange="renderMatches()"><option value="">Alle seizoenen</option></select>
         <select id="filter-comp" onchange="renderMatches()"><option value="">Alle competities</option></select>
       </div>
@@ -1125,11 +1132,13 @@ function renderMatches(){
   if(!career){el.innerHTML='<div class="no-data">Maak eerst een career mode aan</div>';return;}
   const fs=document.getElementById('filter-season').value;
   const fc=document.getElementById('filter-comp').value;
+  const ft=document.getElementById('filter-team').value.trim().toLowerCase();
   let matches=career.matches;
   const allMatches=career.matches;
   if(fs)matches=matches.filter(m=>m.season===fs);
   if(fc)matches=matches.filter(m=>m.comp===fc);
-  if(!matches.length){el.innerHTML='<div class="no-data">Nog geen wedstrijden</div>';return;}
+  if(ft)matches=matches.filter(m=>m.home.toLowerCase().includes(ft)||m.away.toLowerCase().includes(ft));
+  if(!matches.length){el.innerHTML=`<div class="no-data">${career.matches.length?'Geen wedstrijden gevonden':'Nog geen wedstrijden'}</div>`;return;}
   el.innerHTML=matches.map(m=>buildMatchCard(m,allMatches)).join('');
 }
 
