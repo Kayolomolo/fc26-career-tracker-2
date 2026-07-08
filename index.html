@@ -389,6 +389,15 @@ textarea { width: 100%; min-height: 60px; resize: vertical; }
           <select id="match-away"></select>
         </div>
         <div class="form-row">
+          <label>Penalty's?</label>
+          <input type="checkbox" id="match-has-pens" style="width:auto" onchange="document.getElementById('match-pens-row').style.display=this.checked?'flex':'none'">
+          <span style="font-size:11px;color:#666">Beslist na strafschoppen (bij gelijke stand)</span>
+        </div>
+        <div class="form-row" id="match-pens-row" style="display:none">
+          <label>Pen. score</label>
+          <input type="number" id="pens-home" min="0" value="0" style="width:60px"> <span style="color:#555">-</span> <input type="number" id="pens-away" min="0" value="0" style="width:60px">
+        </div>
+        <div class="form-row">
           <label>Notitie</label>
           <textarea id="match-note" placeholder="Hoe was de wedstrijd? (optioneel)"></textarea>
         </div>
@@ -1011,9 +1020,13 @@ function addMatch(){if(!career||isViewingFriend)return;
   if(type==='league'){day=parseInt(document.getElementById('match-day').value)||1;}
   else if(type==='euro'){round=document.getElementById('match-round').value;}
   else{round=document.getElementById('match-cup-round').value;}
-  const m={season:document.getElementById('match-season').value,comp,day,round,home:document.getElementById('match-home').value,away:document.getElementById('match-away').value,homeScore:parseInt(document.getElementById('score-home').value)||0,awayScore:parseInt(document.getElementById('score-away').value)||0,note:document.getElementById('match-note').value.trim(),favorite:false,id:Date.now()};
+  const hasPens=document.getElementById('match-has-pens').checked;
+  const penalties=hasPens?{home:parseInt(document.getElementById('pens-home').value)||0,away:parseInt(document.getElementById('pens-away').value)||0}:null;
+  const m={season:document.getElementById('match-season').value,comp,day,round,home:document.getElementById('match-home').value,away:document.getElementById('match-away').value,homeScore:parseInt(document.getElementById('score-home').value)||0,awayScore:parseInt(document.getElementById('score-away').value)||0,penalties,note:document.getElementById('match-note').value.trim(),favorite:false,id:Date.now()};
   if(m.home===m.away)return alert('Thuis en uit mogen niet hetzelfde zijn');career.matches.unshift(m);save();
   if(type==='league')document.getElementById('match-day').value=parseInt(document.getElementById('match-day').value)+1;
+  document.getElementById('match-has-pens').checked=false;
+  document.getElementById('match-pens-row').style.display='none';
   document.getElementById('match-note').value='';renderMatches();}
 function deleteMatch(id){if(!career||isViewingFriend)return;career.matches=career.matches.filter(m=>m.id!==id);save();renderMatches();}
 function toggleNote(cardEl){const note=cardEl.querySelector('.match-note');if(note)note.classList.toggle('show');}
@@ -1044,6 +1057,15 @@ function editMatch(id){
       <input type="number" id="edit-away-score" value="${m.awayScore}" min="0" style="width:60px">
     </div>
     <div class="form-row"><label></label><span style="font-size:12px;color:#888">${esc(m.home)} - ${esc(m.away)}</span></div>
+    <div class="form-row"><label>Penalty's?</label>
+      <input type="checkbox" id="edit-has-pens" style="width:auto"${m.penalties?' checked':''} onchange="document.getElementById('edit-pens-row').style.display=this.checked?'flex':'none'">
+      <span style="font-size:11px;color:#666">Beslist na strafschoppen</span>
+    </div>
+    <div class="form-row" id="edit-pens-row" style="display:${m.penalties?'flex':'none'}">
+      <label>Pen. score</label>
+      <input type="number" id="edit-pens-home" value="${m.penalties?m.penalties.home:0}" min="0" style="width:60px"> <span style="color:#555">-</span>
+      <input type="number" id="edit-pens-away" value="${m.penalties?m.penalties.away:0}" min="0" style="width:60px">
+    </div>
     <div class="form-row"><label>Notitie</label><textarea id="edit-note" style="flex:1">${esc(m.note||'')}</textarea></div>
     <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px">
       <button class="btn btn-outline" onclick="closeModal('edit-match-modal')">Annuleren</button>
@@ -1060,10 +1082,12 @@ function saveEditMatch(id,type){
   if(!m)return;
   m.homeScore=parseInt(document.getElementById('edit-home-score').value)||0;
   m.awayScore=parseInt(document.getElementById('edit-away-score').value)||0;
+  m.penalties=document.getElementById('edit-has-pens').checked?{home:parseInt(document.getElementById('edit-pens-home').value)||0,away:parseInt(document.getElementById('edit-pens-away').value)||0}:null;
   m.note=document.getElementById('edit-note').value.trim();
   if(type==='league'){m.day=parseInt(document.getElementById('edit-day').value)||1;m.round='';}
   else{m.round=document.getElementById('edit-round').value;m.day=0;}
-  save();closeModal('edit-match-modal');renderMatches();
+  save();closeModal('edit-match-modal');renderMatches();renderFavorites();
+  if(document.getElementById('review-season')&&document.getElementById('review-season').value)renderSeasonReview();
 }
 
 function findLegPair(m, allMatches){
@@ -1073,10 +1097,26 @@ function findLegPair(m, allMatches){
   return allMatches.find(x=>x.id!==m.id&&x.season===m.season&&x.comp===m.comp&&x.round===heenRound&&[x.home,x.away].sort().join()==teams.join());
 }
 
+function matchOutcome(m,team){
+  const isHome=m.home===team;
+  const my=isHome?m.homeScore:m.awayScore;
+  const their=isHome?m.awayScore:m.homeScore;
+  if(my>their)return'win';
+  if(my<their)return'loss';
+  if(m.penalties){
+    const penMy=isHome?m.penalties.home:m.penalties.away;
+    const penTheir=isHome?m.penalties.away:m.penalties.home;
+    if(penMy>penTheir)return'win';
+    if(penMy<penTheir)return'loss';
+  }
+  return'draw';
+}
+
 function buildMatchCard(m,allMatches){
   const isMyHome=m.home===career.team;const isMyAway=m.away===career.team;
-  const myGoals=isMyHome?m.homeScore:m.awayScore;const theirGoals=isMyHome?m.awayScore:m.homeScore;
-  const resultColor=(isMyHome||isMyAway)?(myGoals>theirGoals?'#4CAF50':myGoals<theirGoals?'#f44336':'#FF9800'):'#fff';
+  const outcome=(isMyHome||isMyAway)?matchOutcome(m,career.team):null;
+  const resultColor=outcome==='win'?'#4CAF50':outcome==='loss'?'#f44336':outcome==='draw'?'#FF9800':'#fff';
+  const penHtml=m.penalties?`<div style="font-size:10px;color:#888;margin-top:1px">n.p. ${m.penalties.home}-${m.penalties.away}</div>`:'';
 
   let aggHtml='';
   const heen=findLegPair(m, allMatches);
@@ -1087,10 +1127,17 @@ function buildMatchCard(m,allMatches){
     const myTeam=career.team;
     const totalMy=m.home===myTeam?totalHomeTeam:totalAwayTeam;
     const totalTheir=m.home===myTeam?totalAwayTeam:totalHomeTeam;
-    const outcome=totalMy>totalTheir?'through':totalMy<totalTheir?'out':'tied';
-    const outcomeIcon=outcome==='through'?'fa-circle-check':outcome==='out'?'fa-circle-xmark':'fa-scale-balanced';
-    const outcomeLabel=outcome==='through'?'Doorgaan':outcome==='out'?'Uitgeschakeld':'Gelijke stand';
-    aggHtml=`<div class="agg-result ${outcome}"><i class="fa-solid ${outcomeIcon}"></i> Totaal ${totalHomeTeam}-${totalAwayTeam} &middot; ${outcomeLabel}</div>`;
+    let aggOutcome=totalMy>totalTheir?'through':totalMy<totalTheir?'out':'tied';
+    let aggExtra='';
+    if(aggOutcome==='tied'&&m.penalties){
+      const penMy=m.home===myTeam?m.penalties.home:m.penalties.away;
+      const penTheir=m.home===myTeam?m.penalties.away:m.penalties.home;
+      aggOutcome=penMy>penTheir?'through':penMy<penTheir?'out':'tied';
+      aggExtra=' (n.p.)';
+    }
+    const outcomeIcon=aggOutcome==='through'?'fa-circle-check':aggOutcome==='out'?'fa-circle-xmark':'fa-scale-balanced';
+    const outcomeLabel=aggOutcome==='through'?'Doorgaan':aggOutcome==='out'?'Uitgeschakeld':'Gelijke stand';
+    aggHtml=`<div class="agg-result ${aggOutcome}"><i class="fa-solid ${outcomeIcon}"></i> Totaal ${totalHomeTeam}-${totalAwayTeam}${aggExtra} &middot; ${outcomeLabel}</div>`;
   }
 
   return`<div class="match-card" onclick="toggleNote(this)">
@@ -1098,7 +1145,7 @@ function buildMatchCard(m,allMatches){
       <div class="match-teams">
         <div class="match-team home">${esc(m.home)}</div>
         ${teamLogo(m.home)}
-        <div class="match-score" style="color:${resultColor}">${m.homeScore} - ${m.awayScore}</div>
+        <div><div class="match-score" style="color:${resultColor}">${m.homeScore} - ${m.awayScore}</div>${penHtml}</div>
         ${teamLogo(m.away)}
         <div class="match-team away">${esc(m.away)}</div>
       </div>
@@ -1156,7 +1203,7 @@ function posClass(val){if(val==='Winnaar')return'gold';if(val==='Finalist'||val=
 function trophyDisplay(t,val){if(!val||val==='Niet deelgenomen')return{text:'n.v.t.',cls:'none'};if(t.type==='pos')return{text:'#'+val,cls:val==='1'?'gold':val==='2'?'silver':val==='3'?'bronze':'gray'};return{text:val,cls:posClass(val)};}
 function renderStandings(){const el=document.getElementById('standings-grid');if(!career){el.innerHTML='<div class="no-data">Maak eerst een career mode aan</div>';return;}const season=document.getElementById('view-standing-season').value;const league=getLeague();const seasonsToShow=season?[season]:career.seasons;let html='';seasonsToShow.forEach(s=>{const st=career.standings[s];if(!st)return;html+=`<div style="grid-column:1/-1;font-size:16px;font-weight:600;margin-top:12px;color:var(--accent)">${esc(s)}</div>`;html+=league.trophies.map(t=>{const val=st[t.id];const pts=st[t.id+'_pts'];const{text,cls}=trophyDisplay(t,val);const ptsHtml=pts?`<div style="font-size:13px;color:#888;margin-top:4px">${pts} punten</div>`:'';return`<div class="standing-card"><h4>${t.label}</h4><div class="position ${cls}">${text}</div>${ptsHtml}</div>`;}).join('');});if(!html)html='<div class="no-data">Nog geen klassementen opgeslagen</div>';el.innerHTML=html;}
 
-function renderStats(){if(!career){document.getElementById('stats-grid').innerHTML='';document.getElementById('recent-results').innerHTML='<div class="no-data">Maak eerst een career mode aan</div>';return;}const season=document.getElementById('stats-season').value;const comp=document.getElementById('stats-comp').value;let matches=career.matches;if(season)matches=matches.filter(m=>m.season===season);if(comp)matches=matches.filter(m=>m.comp===comp);const myMatches=matches.filter(m=>m.home===career.team||m.away===career.team);let wins=0,draws=0,losses=0,gf=0,ga=0,wStreak=0,bestWStreak=0,ubStreak=0,bestUbStreak=0;myMatches.forEach(m=>{const isHome=m.home===career.team;const my=isHome?m.homeScore:m.awayScore,their=isHome?m.awayScore:m.homeScore;gf+=my;ga+=their;if(my>their){wins++;wStreak++;ubStreak++;if(wStreak>bestWStreak)bestWStreak=wStreak;}else if(my<their){losses++;wStreak=0;ubStreak=0;}else{draws++;wStreak=0;ubStreak++;} if(ubStreak>bestUbStreak)bestUbStreak=ubStreak;});document.getElementById('stats-grid').innerHTML=`<div class="stat-card"><div class="value">${myMatches.length}</div><div class="label">Wedstrijden</div></div><div class="stat-card"><div class="value" style="color:#4CAF50">${wins}</div><div class="label">Gewonnen</div></div><div class="stat-card"><div class="value" style="color:#FF9800">${draws}</div><div class="label">Gelijk</div></div><div class="stat-card"><div class="value" style="color:#f44336">${losses}</div><div class="label">Verloren</div></div><div class="stat-card"><div class="value">${gf}</div><div class="label">Goals voor</div></div><div class="stat-card"><div class="value">${ga}</div><div class="label">Goals tegen</div></div><div class="stat-card"><div class="value" style="color:#4CAF50">${bestWStreak}</div><div class="label">Winstreek</div></div><div class="stat-card"><div class="value" style="color:var(--accent)">${bestUbStreak}</div><div class="label">Ongeslagen reeks</div></div><div class="stat-card"><div class="value">${myMatches.length?Math.round(wins/myMatches.length*100):0}%</div><div class="label">Win %</div></div>`;const recent=myMatches.slice(0,5);document.getElementById('recent-results').innerHTML=recent.length?recent.map(m=>{const isMyH=m.home===career.team;const myG=isMyH?m.homeScore:m.awayScore,thG=isMyH?m.awayScore:m.homeScore;const rc=myG>thG?'#4CAF50':myG<thG?'#f44336':'#FF9800';return`<div class="match-card" style="margin-bottom:6px;cursor:default"><div class="match-top"><div class="match-teams"><div class="match-team home">${esc(m.home)}</div>${teamLogo(m.home)}<div class="match-score" style="color:${rc}">${m.homeScore} - ${m.awayScore}</div>${teamLogo(m.away)}<div class="match-team away">${esc(m.away)}</div></div></div><div class="match-meta"><div class="match-comp">${esc(m.comp)}</div><div>${esc(m.round||('SD '+m.day))} | ${esc(m.season)}</div></div></div>`;}).join(''):'<div class="no-data">Geen wedstrijden</div>';}
+function renderStats(){if(!career){document.getElementById('stats-grid').innerHTML='';document.getElementById('recent-results').innerHTML='<div class="no-data">Maak eerst een career mode aan</div>';return;}const season=document.getElementById('stats-season').value;const comp=document.getElementById('stats-comp').value;let matches=career.matches;if(season)matches=matches.filter(m=>m.season===season);if(comp)matches=matches.filter(m=>m.comp===comp);const myMatches=matches.filter(m=>m.home===career.team||m.away===career.team);let wins=0,draws=0,losses=0,gf=0,ga=0,wStreak=0,bestWStreak=0,ubStreak=0,bestUbStreak=0;myMatches.forEach(m=>{const isHome=m.home===career.team;const my=isHome?m.homeScore:m.awayScore,their=isHome?m.awayScore:m.homeScore;gf+=my;ga+=their;const outcome=matchOutcome(m,career.team);if(outcome==='win'){wins++;wStreak++;ubStreak++;if(wStreak>bestWStreak)bestWStreak=wStreak;}else if(outcome==='loss'){losses++;wStreak=0;ubStreak=0;}else{draws++;wStreak=0;ubStreak++;} if(ubStreak>bestUbStreak)bestUbStreak=ubStreak;});document.getElementById('stats-grid').innerHTML=`<div class="stat-card"><div class="value">${myMatches.length}</div><div class="label">Wedstrijden</div></div><div class="stat-card"><div class="value" style="color:#4CAF50">${wins}</div><div class="label">Gewonnen</div></div><div class="stat-card"><div class="value" style="color:#FF9800">${draws}</div><div class="label">Gelijk</div></div><div class="stat-card"><div class="value" style="color:#f44336">${losses}</div><div class="label">Verloren</div></div><div class="stat-card"><div class="value">${gf}</div><div class="label">Goals voor</div></div><div class="stat-card"><div class="value">${ga}</div><div class="label">Goals tegen</div></div><div class="stat-card"><div class="value" style="color:#4CAF50">${bestWStreak}</div><div class="label">Winstreek</div></div><div class="stat-card"><div class="value" style="color:var(--accent)">${bestUbStreak}</div><div class="label">Ongeslagen reeks</div></div><div class="stat-card"><div class="value">${myMatches.length?Math.round(wins/myMatches.length*100):0}%</div><div class="label">Win %</div></div>`;const recent=myMatches.slice(0,5);document.getElementById('recent-results').innerHTML=recent.length?recent.map(m=>{const outcome=matchOutcome(m,career.team);const rc=outcome==='win'?'#4CAF50':outcome==='loss'?'#f44336':'#FF9800';const penHtml=m.penalties?`<div style="font-size:10px;color:#888;margin-top:1px">n.p. ${m.penalties.home}-${m.penalties.away}</div>`:'';return`<div class="match-card" style="margin-bottom:6px;cursor:default"><div class="match-top"><div class="match-teams"><div class="match-team home">${esc(m.home)}</div>${teamLogo(m.home)}<div><div class="match-score" style="color:${rc}">${m.homeScore} - ${m.awayScore}</div>${penHtml}</div>${teamLogo(m.away)}<div class="match-team away">${esc(m.away)}</div></div></div><div class="match-meta"><div class="match-comp">${esc(m.comp)}</div><div>${esc(m.round||('SD '+m.day))} | ${esc(m.season)}</div></div></div>`;}).join(''):'<div class="no-data">Geen wedstrijden</div>';}
 
 function showAddPlayer(){if(!career||isViewingFriend)return;document.getElementById('pl-name').value='';document.getElementById('pl-rating').value='';document.getElementById('pl-photo').value='';showModal('player-modal');}
 function resizeImgAspect(file,targetW,targetH,cb){const reader=new FileReader();reader.onload=function(ev){const img=new Image();img.onload=function(){const c=document.createElement('canvas');c.width=targetW;c.height=targetH;const ctx=c.getContext('2d'),sc=Math.max(targetW/img.width,targetH/img.height),w=img.width*sc,h=img.height*sc;ctx.drawImage(img,(targetW-w)/2,(targetH-h)/2,w,h);cb(c.toDataURL('image/jpeg',0.75));};img.src=ev.target.result;};reader.readAsDataURL(file);}
@@ -1446,8 +1493,9 @@ function calcCareerStats(){
     if(their===0&&my>0)cleanSheets++;
     const diff=my-their;
     if(diff>biggestWin)biggestWin=diff;
-    if(my>their){wins++;streak++;if(streak>bestStreak)bestStreak=streak;}else{streak=0;if(my<their)losses++;else draws++;}
-    if(m.note&&m.note.toLowerCase().includes('comeback')&&my>their)comebacks++;
+    const outcome=matchOutcome(m,career.team);
+    if(outcome==='win'){wins++;streak++;if(streak>bestStreak)bestStreak=streak;}else{streak=0;if(outcome==='loss')losses++;else draws++;}
+    if(m.note&&m.note.toLowerCase().includes('comeback')&&outcome==='win')comebacks++;
   });
   let trophies=0,champion=false,clWinner=false,treble=false,unbeatenSeason=false;
   if(career.standings){
@@ -1465,7 +1513,7 @@ function calcCareerStats(){
       if(seasonChamp&&seasonCup&&seasonCL)treble=true;
       const seasonMatches=myMatches.filter(m=>m.season===season);
       if(seasonMatches.length>=10){
-        const noLoss=seasonMatches.every(m=>{const isHome=m.home===career.team;const my=isHome?m.homeScore:m.awayScore,their=isHome?m.awayScore:m.homeScore;return my>=their;});
+        const noLoss=seasonMatches.every(m=>matchOutcome(m,career.team)!=='loss');
         if(noLoss)unbeatenSeason=true;
       }
     });
@@ -1475,14 +1523,14 @@ function calcCareerStats(){
   const confWinner=career.standings&&Object.values(career.standings).some(st=>st.conference==='Winnaar');
   const cupWinner=career.standings&&Object.values(career.standings).some(st=>st.cup==='Winnaar'||st.facup==='Winnaar'||st.eflcup==='Winnaar');
   const double=career.standings&&Object.values(career.standings).some(st=>{const champ=st.league==='1';const cup=st.cup==='Winnaar'||st.facup==='Winnaar'||st.eflcup==='Winnaar';return champ&&cup;});
-  const noDrawSeason=career.seasons&&career.seasons.some(s=>{const sm=myMatches.filter(m=>m.season===s);return sm.length>=10&&sm.every(m=>{const isH=m.home===career.team;const my=isH?m.homeScore:m.awayScore,th=isH?m.awayScore:m.homeScore;return my!==th;});});
-  const allWinSeason=career.seasons&&career.seasons.some(s=>{const sm=myMatches.filter(m=>m.season===s);return sm.length>=10&&sm.every(m=>{const isH=m.home===career.team;const my=isH?m.homeScore:m.awayScore,th=isH?m.awayScore:m.homeScore;return my>th;});});
+  const noDrawSeason=career.seasons&&career.seasons.some(s=>{const sm=myMatches.filter(m=>m.season===s);return sm.length>=10&&sm.every(m=>matchOutcome(m,career.team)!=='draw');});
+  const allWinSeason=career.seasons&&career.seasons.some(s=>{const sm=myMatches.filter(m=>m.season===s);return sm.length>=10&&sm.every(m=>matchOutcome(m,career.team)==='win');});
   let loseStreak=0,bestLoseStreak=0;
-  myMatches.forEach(m=>{const isH=m.home===career.team;const my=isH?m.homeScore:m.awayScore,th=isH?m.awayScore:m.homeScore;if(my<th){loseStreak++;if(loseStreak>bestLoseStreak)bestLoseStreak=loseStreak;}else loseStreak=0;});
+  myMatches.forEach(m=>{if(matchOutcome(m,career.team)==='loss'){loseStreak++;if(loseStreak>bestLoseStreak)bestLoseStreak=loseStreak;}else loseStreak=0;});
   const highScore=myMatches.some(m=>m.homeScore+m.awayScore>=8);
   const nilNil=myMatches.some(m=>m.homeScore===0&&m.awayScore===0);
-  const awayWins=myMatches.filter(m=>m.away===career.team&&m.awayScore>m.homeScore).length;
-  const homeWins=myMatches.filter(m=>m.home===career.team&&m.homeScore>m.awayScore).length;
+  const awayWins=myMatches.filter(m=>m.away===career.team&&matchOutcome(m,career.team)==='win').length;
+  const homeWins=myMatches.filter(m=>m.home===career.team&&matchOutcome(m,career.team)==='win').length;
   return{matches:myMatches.length,wins,draws,losses,goalsFor:gf,goalsAgainst:ga,cleanSheets,biggestWin,bestStreak,comebacks,trophies,champion,clWinner,treble,unbeatenSeason,transfers:(career.transfers||[]).length,squadSize:(career.players||[]).length,careerCount:data.careers.length,seasons,europaWinner,confWinner,cupWinner,double,noDrawSeason,allWinSeason,bestLoseStreak,highScore,nilNil,awayWins,homeWins,winPct:myMatches.length?Math.round(wins/myMatches.length*100):0};
 }
 
@@ -1536,9 +1584,10 @@ function renderSeasonReview(){
     const my=isHome?m.homeScore:m.awayScore,their=isHome?m.awayScore:m.homeScore;
     gf+=my;ga+=their;
     if(their===0&&my>0)cleanSheets++;
-    if(my>their){wins++;streak++;if(streak>bestStreak)bestStreak=streak;
+    const outcome=matchOutcome(m,career.team);
+    if(outcome==='win'){wins++;streak++;if(streak>bestStreak)bestStreak=streak;
       if(!bestWin||my-their>bestWin.diff)bestWin={m,diff:my-their};
-    }else{streak=0;if(my<their){losses++;if(!worstLoss||their-my>worstLoss.diff)worstLoss={m,diff:their-my};}else draws++;}
+    }else{streak=0;if(outcome==='loss'){losses++;if(!worstLoss||their-my>worstLoss.diff)worstLoss={m,diff:their-my};}else draws++;}
   });
 
   const st=career.standings?career.standings[season]:null;
@@ -1609,7 +1658,7 @@ function calcStatsForData(d){
       const mg=isHome?m.homeScore:m.awayScore,tg=isHome?m.awayScore:m.homeScore;
       matches++;gf+=mg;ga+=tg;
       if(tg===0&&mg>0)cleanSheets++;
-      if(mg>tg){wins++;streak++;if(streak>bestStreak)bestStreak=streak;}else{streak=0;}
+      if(matchOutcome(m,c.team)==='win'){wins++;streak++;if(streak>bestStreak)bestStreak=streak;}else{streak=0;}
     });
     if(c.standings)Object.values(c.standings).forEach(st=>Object.values(st).forEach(v=>{if(v==='Winnaar'||v==='1')trophies++;}));
   });
@@ -1724,7 +1773,7 @@ async function loadLeaderboard(){
           const isHome=m.home===c.team;
           const my=isHome?m.homeScore:m.awayScore,their=isHome?m.awayScore:m.homeScore;
           totalMatches++;totalGF+=my;totalGA+=their;
-          if(my>their)totalWins++;
+          if(matchOutcome(m,c.team)==='win')totalWins++;
         });
         if(c.standings){
           Object.keys(c.standings).forEach(season=>{
