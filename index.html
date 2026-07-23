@@ -112,6 +112,7 @@ textarea { width: 100%; min-height: 60px; resize: vertical; }
 .reaction-count { font-size: 11px; color: #888; }
 .reaction-btn.active .reaction-count { color: var(--accent); }
 .reaction-who { font-size: 11px; color: #666; margin-top: 4px; }
+.reaction-add { border-style: dashed; opacity: 0.7; color: #888; }
 
 .standings-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px; margin-bottom: 16px; }
 .standing-card { background: #111827; border-radius: 10px; padding: 12px; border: 1px solid #1e2a3a; }
@@ -871,13 +872,15 @@ function startReactionsSync(uid) {
     }, err => { console.error('Reactions sync error:', err); });
 }
 
+function jsAttr(s) { return esc(String(s).replace(/\\/g, '\\\\').replace(/'/g, "\\'")); }
+
 async function toggleReaction(matchId, emoji) {
   if (!currentUserId || !viewingUid) return;
-  const docId = viewingUid + '_' + matchId + '_' + currentUserId;
+  const docId = viewingUid + '_' + matchId + '_' + currentUserId + '_' + emoji;
   const ref = db.collection('reactions').doc(docId);
-  const mine = (reactionsByMatch[matchId] || []).find(r => r.reactorUid === currentUserId);
+  const mine = (reactionsByMatch[matchId] || []).some(r => r.reactorUid === currentUserId && r.emoji === emoji);
   try {
-    if (mine && mine.emoji === emoji) {
+    if (mine) {
       await ref.delete();
     } else {
       await ref.set({
@@ -892,18 +895,26 @@ async function toggleReaction(matchId, emoji) {
   } catch(e) { console.error('Reactie mislukt:', e); }
 }
 
+function addCustomReaction(matchId) {
+  const val = prompt('Eigen reactie (bijv. 😱 of 💀):');
+  if (val && val.trim()) toggleReaction(matchId, val.trim().slice(0, 10));
+}
+
 function buildReactionsHtml(matchId) {
   const list = reactionsByMatch[matchId] || [];
-  const mine = list.find(r => r.reactorUid === currentUserId);
+  const mySet = new Set(list.filter(r => r.reactorUid === currentUserId).map(r => r.emoji));
   const counts = {};
   list.forEach(r => { counts[r.emoji] = (counts[r.emoji] || 0) + 1; });
-  const buttonsHtml = REACTION_EMOJIS.map(e => {
+  const extraEmojis = Object.keys(counts).filter(e => !REACTION_EMOJIS.includes(e));
+  const allEmojis = REACTION_EMOJIS.concat(extraEmojis);
+  const buttonsHtml = allEmojis.map(e => {
     const c = counts[e] || 0;
-    const active = mine && mine.emoji === e;
-    return `<button class="reaction-btn${active ? ' active' : ''}" onclick="event.stopPropagation();toggleReaction(${matchId},'${e}')">${e}${c ? `<span class="reaction-count">${c}</span>` : ''}</button>`;
+    const active = mySet.has(e);
+    return `<button class="reaction-btn${active ? ' active' : ''}" onclick="event.stopPropagation();toggleReaction(${matchId},'${jsAttr(e)}')">${esc(e)}${c ? `<span class="reaction-count">${c}</span>` : ''}</button>`;
   }).join('');
-  const whoHtml = list.length ? `<div class="reaction-who">${list.map(r => `${esc(r.reactorName || '?')} ${r.emoji}`).join(', ')}</div>` : '';
-  return `<div class="reactions-row">${buttonsHtml}</div>${whoHtml}`;
+  const addHtml = `<button class="reaction-btn reaction-add" onclick="event.stopPropagation();addCustomReaction(${matchId})" title="Eigen reactie">+</button>`;
+  const whoHtml = list.length ? `<div class="reaction-who">${list.map(r => `${esc(r.reactorName || '?')} ${esc(r.emoji)}`).join(', ')}</div>` : '';
+  return `<div class="reactions-row">${buttonsHtml}${addHtml}</div>${whoHtml}`;
 }
 
 function startRealtimeSync(uid) {
