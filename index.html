@@ -106,12 +106,11 @@ textarea { width: 100%; min-height: 60px; resize: vertical; }
 .match-expand { display: flex; align-items: center; justify-content: space-between; margin-top: 8px; padding-top: 8px; border-top: 1px solid #1e2a3a; }
 .match-expand .note-hint { font-size: 11px; color: #555; display: flex; align-items: center; gap: 4px; }
 .fav-btn.active { color: #f44336; border-color: #f4433655; }
-.reactions-row { display: flex; gap: 6px; margin-top: 8px; padding-top: 8px; border-top: 1px solid #1e2a3a; flex-wrap: wrap; }
+.reaction-picker { display: none; gap: 6px; margin-top: 8px; padding-top: 8px; border-top: 1px solid #1e2a3a; flex-wrap: wrap; }
+.reaction-picker.show { display: flex; }
 .reaction-btn { background: #0d1420; border: 1px solid #1e2a3a; border-radius: 20px; padding: 3px 8px; font-size: 14px; line-height: 1.3; cursor: pointer; display: flex; align-items: center; gap: 4px; color: #ccc; }
 .reaction-btn.active { border-color: var(--accent); color: var(--accent); font-weight: 600; }
-.reaction-count { font-size: 11px; color: #888; }
-.reaction-btn.active .reaction-count { color: var(--accent); }
-.reaction-who { font-size: 11px; color: #666; margin-top: 4px; }
+.reaction-who { font-size: 11px; color: #666; margin-top: 6px; }
 
 .standings-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px; margin-bottom: 16px; }
 .standing-card { background: #111827; border-radius: 10px; padding: 12px; border: 1px solid #1e2a3a; }
@@ -895,15 +894,12 @@ async function toggleReaction(matchId, emoji) {
 function buildReactionsHtml(matchId) {
   const list = reactionsByMatch[matchId] || [];
   const mine = list.find(r => r.reactorUid === currentUserId);
-  const counts = {};
-  list.forEach(r => { counts[r.emoji] = (counts[r.emoji] || 0) + 1; });
-  const buttonsHtml = REACTION_EMOJIS.map(e => {
-    const c = counts[e] || 0;
+  const pickerHtml = `<div class="reaction-picker">${REACTION_EMOJIS.map(e => {
     const active = mine && mine.emoji === e;
-    return `<button class="reaction-btn${active ? ' active' : ''}" onclick="event.stopPropagation();toggleReaction(${matchId},'${e}')">${e}${c ? `<span class="reaction-count">${c}</span>` : ''}</button>`;
-  }).join('');
+    return `<button class="reaction-btn${active ? ' active' : ''}" onclick="event.stopPropagation();toggleReaction(${matchId},'${e}')">${e}</button>`;
+  }).join('')}</div>`;
   const whoHtml = list.length ? `<div class="reaction-who">${list.map(r => `${esc(r.reactorName || '?')} ${r.emoji}`).join(', ')}</div>` : '';
-  return `<div class="reactions-row">${buttonsHtml}</div>${whoHtml}`;
+  return pickerHtml + whoHtml;
 }
 
 function startRealtimeSync(uid) {
@@ -1234,6 +1230,7 @@ function buildMatchCard(m,allMatches){
       <div class="note-hint">${m.note?'<i class="fa-solid fa-comment"></i> Tik voor notitie':''}</div>
       <div style="display:flex;gap:4px">
         <button class="btn btn-outline btn-sm fav-btn ${m.favorite?'active':''}" onclick="event.stopPropagation();toggleFavorite(${m.id})" title="Favoriet"><i class="fa-solid fa-heart"></i></button>
+        <button class="btn btn-outline btn-sm" onclick="event.stopPropagation();this.closest('.match-card').querySelector('.reaction-picker').classList.toggle('show')" title="Reageren"><i class="fa-solid fa-face-smile"></i></button>
         ${isViewingFriend?'':`<button class="btn btn-outline btn-sm" onclick="event.stopPropagation();editMatch(${m.id})"><i class="fa-solid fa-pen"></i></button><button class="btn btn-danger btn-sm" onclick="event.stopPropagation();deleteMatch(${m.id})"><i class="fa-solid fa-trash"></i></button>`}
       </div>
     </div>
