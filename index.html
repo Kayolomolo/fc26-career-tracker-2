@@ -543,12 +543,16 @@ textarea { width: 100%; min-height: 60px; resize: vertical; }
         <p style="font-size:13px;color:#888;margin-bottom:12px">Vergelijk twee van je eigen career modes met elkaar</p>
         <div class="form-row">
           <label>Career 1</label>
-          <select id="compare-career1" onchange="renderCompare()"></select>
+          <select id="compare-career1" onchange="populateCompareFilters();renderCompare()"></select>
         </div>
         <div class="form-row">
           <label>Career 2</label>
-          <select id="compare-career2" onchange="renderCompare()"></select>
+          <select id="compare-career2" onchange="populateCompareFilters();renderCompare()"></select>
         </div>
+      </div>
+      <div class="filter-row">
+        <select id="compare-season" onchange="renderCompare()"><option value="">Alle seizoenen</option></select>
+        <select id="compare-comp" onchange="renderCompare()"><option value="">Alle competities</option></select>
       </div>
       <div id="compare-content"></div>
     </div>
@@ -1508,7 +1512,7 @@ function switchTab(tab){
   if(tab==='achievements')renderAchievements();
   if(tab==='season-review'){populateReviewSeasons();renderSeasonReview();}
   if(tab==='h2h')loadH2HPlayers();
-  if(tab==='compare'){populateCompareSelects();renderCompare();}
+  if(tab==='compare'){populateCompareSelects();populateCompareFilters();renderCompare();}
 }
 
 document.addEventListener('click',function(e){
@@ -1853,9 +1857,11 @@ function renderH2H(){
     ${statRow('Trofeeën',s1.trophies,s2.trophies,true)}`;
 }
 
-function calcStatsForCareer(c){
+function calcStatsForCareer(c,season,comp){
   let matches=0,wins=0,draws=0,losses=0,gf=0,ga=0,cleanSheets=0,bestStreak=0,streak=0,trophies=0;
-  const my=(c.matches||[]).filter(m=>m.home===c.team||m.away===c.team);
+  let my=(c.matches||[]).filter(m=>m.home===c.team||m.away===c.team);
+  if(season)my=my.filter(m=>m.season===season);
+  if(comp)my=my.filter(m=>m.comp===comp);
   my.forEach(m=>{
     const isHome=m.home===c.team;
     const mg=isHome?m.homeScore:m.awayScore,tg=isHome?m.awayScore:m.homeScore;
@@ -1865,8 +1871,9 @@ function calcStatsForCareer(c){
     if(outcome==='win'){wins++;streak++;if(streak>bestStreak)bestStreak=streak;}
     else{streak=0;if(outcome==='draw')draws++;else losses++;}
   });
-  if(c.standings)Object.values(c.standings).forEach(st=>Object.values(st).forEach(v=>{if(v==='Winnaar'||v==='1')trophies++;}));
-  const transfers=c.transfers||[];
+  if(c.standings)Object.entries(c.standings).forEach(([s,st])=>{if(season&&s!==season)return;Object.values(st).forEach(v=>{if(v==='Winnaar'||v==='1')trophies++;});});
+  let transfers=c.transfers||[];
+  if(season)transfers=transfers.filter(t=>t.season===season);
   const spent=transfers.filter(t=>t.type==='buy'||t.type==='free').reduce((s,t)=>s+(t.feeNum||0),0);
   const earned=transfers.filter(t=>t.type==='sell').reduce((s,t)=>s+(t.feeNum||0),0);
   return{seasons:(c.seasons||[]).length,matches,wins,draws,losses,winPct:matches?Math.round(wins/matches*100):0,gf,ga,gd:gf-ga,cleanSheets,bestStreak,trophies,spent,earned};
@@ -1887,6 +1894,23 @@ function populateCompareSelects(){
   }
 }
 
+function populateCompareFilters(){
+  const c1=data.careers.find(c=>c.id===document.getElementById('compare-career1').value);
+  const c2=data.careers.find(c=>c.id===document.getElementById('compare-career2').value);
+  const seasons=[],comps=[];
+  [c1,c2].forEach(c=>{
+    if(!c)return;
+    (c.seasons||[]).forEach(s=>{if(!seasons.includes(s))seasons.push(s);});
+    (c.matches||[]).forEach(m=>{if(!comps.includes(m.comp))comps.push(m.comp);});
+  });
+  const seasonEl=document.getElementById('compare-season'), compEl=document.getElementById('compare-comp');
+  const curSeason=seasonEl.value, curComp=compEl.value;
+  seasonEl.innerHTML='<option value="">Alle seizoenen</option>'+seasons.map(s=>`<option>${esc(s)}</option>`).join('');
+  compEl.innerHTML='<option value="">Alle competities</option>'+comps.map(c=>`<option>${esc(c)}</option>`).join('');
+  if(seasons.includes(curSeason))seasonEl.value=curSeason;
+  if(comps.includes(curComp))compEl.value=curComp;
+}
+
 function renderCompare(){
   const el=document.getElementById('compare-content');
   if(!data.careers||data.careers.length<2){el.innerHTML='<div class="no-data">Je hebt minstens 2 career modes nodig om te vergelijken</div>';return;}
@@ -1896,7 +1920,9 @@ function renderCompare(){
   const c1=data.careers.find(c=>c.id===id1);
   const c2=data.careers.find(c=>c.id===id2);
   if(!c1||!c2)return;
-  const s1=calcStatsForCareer(c1),s2=calcStatsForCareer(c2);
+  const season=document.getElementById('compare-season').value;
+  const comp=document.getElementById('compare-comp').value;
+  const s1=calcStatsForCareer(c1,season,comp),s2=calcStatsForCareer(c2,season,comp);
 
   function statRow(label,v1,v2,higherBetter,cmp1,cmp2){
     const n1=cmp1!==undefined?cmp1:parseFloat(v1);
@@ -1916,7 +1942,7 @@ function renderCompare(){
       <div class="h2h-vs">VS</div>
       <div class="h2h-player" style="border-radius:0 12px 12px 0">${teamLogoSm(c2.team)}<div style="font-size:16px;font-weight:700;margin-top:6px">${esc(c2.name)}</div></div>
     </div>
-    ${statRow('Seizoenen',s1.seasons,s2.seasons,true)}
+    ${season?'':statRow('Seizoenen',s1.seasons,s2.seasons,true)}
     ${statRow('Wedstrijden',s1.matches,s2.matches,true)}
     ${statRow('Gewonnen',s1.wins,s2.wins,true)}
     ${statRow('Gelijk',s1.draws,s2.draws,true)}
