@@ -153,6 +153,26 @@ textarea { width: 100%; min-height: 60px; resize: vertical; }
   .standings-grid { grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); }
 }
 
+.squad-depth { display: flex; align-items: center; justify-content: center; gap: 14px; padding: 4px 0; flex-wrap: wrap; }
+.sd-logo { flex-shrink: 0; }
+.sd-grid { display: grid; grid-template-columns: repeat(2, minmax(72px, auto)); gap: 8px 20px; }
+.sd-item { display: flex; align-items: center; gap: 7px; }
+.sd-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+.sd-label { font-size: 14px; color: #ccc; font-weight: 500; }
+.sd-count { font-size: 15px; font-weight: 700; color: #fff; margin-left: auto; }
+.sd-ring { flex-shrink: 0; width: 76px; height: 76px; }
+
+@media (min-width: 850px) {
+  .squad-depth { gap: clamp(24px, 4vw, 44px); padding: 10px 8px; }
+  .sd-logo .team-logo { width: 68px !important; height: 68px !important; font-size: 22px !important; }
+  .sd-grid { grid-template-columns: repeat(4, auto); gap: 0 34px; }
+  .sd-item { gap: 10px; }
+  .sd-dot { width: 10px; height: 10px; }
+  .sd-label { font-size: 17px; }
+  .sd-count { font-size: 22px; margin-left: 0; }
+  .sd-ring { width: 104px; height: 104px; }
+}
+
 .squad-layout { display: flex; flex-direction: column; align-items: center; gap: 16px; margin-bottom: 20px; }
 .pitch { position: relative; width: 100%; max-width: 500px; aspect-ratio: 68/100; background: #1a5e1a; border-radius: 12px; border: 2px solid #2a7e2a; overflow: visible; flex-shrink: 0; }
 .manager-card { background: #111827; border: 1px solid #1e2a3a; border-radius: 12px; padding: 16px; text-align: center; width: 100%; max-width: 220px; order: -1; }
@@ -1386,12 +1406,12 @@ function renderSquadDepthChart(players,team){
   const bgCircle=total?'':`<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="#1e2a3a" stroke-width="6"/>`;
   const cells=SQUAD_DEPTH_DISPLAY_ORDER.map(label=>{
     const g=SQUAD_DEPTH_GROUPS.find(x=>x.label===label);
-    return`<div style="display:flex;align-items:center;gap:7px"><span style="width:9px;height:9px;border-radius:50%;background:${g.color};flex-shrink:0"></span><span style="font-size:14px;color:#ccc;font-weight:500">${label}</span><span style="font-size:15px;font-weight:700;color:#fff;margin-left:auto">${counts[label]}</span></div>`;
+    return`<div class="sd-item"><span class="sd-dot" style="background:${g.color}"></span><span class="sd-label">${label}</span><span class="sd-count">${counts[label]}</span></div>`;
   }).join('');
-  return`<div style="display:flex;align-items:center;justify-content:center;gap:14px;padding:4px 0;flex-wrap:wrap">
-    ${team?teamLogo(team,44):''}
-    <div style="display:grid;grid-template-columns:repeat(2,minmax(72px,auto));gap:8px 20px">${cells}</div>
-    <svg width="76" height="76" viewBox="0 0 76 76" style="flex-shrink:0">
+  return`<div class="squad-depth">
+    ${team?`<div class="sd-logo">${teamLogo(team,44)}</div>`:''}
+    <div class="sd-grid">${cells}</div>
+    <svg class="sd-ring" viewBox="0 0 76 76">
       ${bgCircle}${circles}
       <text x="${cx}" y="${cy}" text-anchor="middle" dominant-baseline="central" font-size="24" font-weight="700" fill="#fff">${total}</text>
     </svg>
