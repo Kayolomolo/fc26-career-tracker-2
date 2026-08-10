@@ -1780,7 +1780,7 @@ function renderSeasonReview(){
   let trophyHtml='<span style="color:#555">Geen klassement opgeslagen</span>';
   if(st){
     trophyHtml=league.trophies.map(t=>{
-      const val=st[t.id];if(!val)return'';
+      const val=st[t.id];if(!val||val==='Niet deelgenomen')return'';
       const icon=val==='Winnaar'||val==='1'?'<i class="fa-solid fa-trophy" style="color:#ffd700"></i>':'';
       const display=t.type==='pos'&&val?'#'+val:val;
       return`<div style="display:flex;align-items:center;gap:8px;padding:4px 0"><span style="color:#888;min-width:120px;font-size:12px">${t.label}</span><span style="font-weight:600">${icon} ${display}</span></div>`;
