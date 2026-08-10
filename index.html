@@ -1327,6 +1327,33 @@ function savePlayer(){if(!career||isViewingFriend)return;const name=document.get
 function deletePlayer(id){if(!career||isViewingFriend||!confirm('Speler verwijderen?'))return;career.players=career.players.filter(p=>p.id!==id);if(career.ratings)delete career.ratings[id];save();renderFormation();populatePlayers();}
 function changePlayerPhoto(id){if(isViewingFriend)return;const input=document.createElement('input');input.type='file';input.accept='image/*';input.onchange=function(e){const file=e.target.files[0];if(!file)return;resizeImg(file,function(d){const p=career.players.find(x=>x.id===id);if(p){p.photo=d;save();renderFormation();}});};input.click();}
 
+const ALL_POSITIONS=['GK','LB','CB','RB','LWB','RWB','CDM','CM','CAM','LM','RM','LW','RW','ST','CF'];
+function changePlayerPosition(id){
+  if(!career||isViewingFriend)return;
+  const p=career.players.find(x=>x.id===id);
+  if(!p)return;
+  const html=`<div class="modal">
+    <h3><i class="fa-solid fa-user-pen"></i> Positie wijzigen</h3>
+    <div class="form-row"><label>Speler</label><span style="color:var(--accent)">${esc(p.name)}</span></div>
+    <div class="form-row"><label>Positie</label><select id="edit-pl-position" style="flex:1">${ALL_POSITIONS.map(o=>`<option${o===p.position?' selected':''}>${o}</option>`).join('')}</select></div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px">
+      <button class="btn btn-outline" onclick="closeModal('edit-player-modal')">Annuleren</button>
+      <button class="btn btn-primary" onclick="savePlayerPosition('${p.id}')"><i class="fa-solid fa-save"></i> Opslaan</button>
+    </div>
+  </div>`;
+  let overlay=document.getElementById('edit-player-modal');
+  if(!overlay){overlay=document.createElement('div');overlay.id='edit-player-modal';overlay.className='modal-overlay';document.body.appendChild(overlay);}
+  overlay.innerHTML=html;overlay.classList.add('show');
+  openMenuId=null;renderFormation();
+}
+function savePlayerPosition(id){
+  if(!career||isViewingFriend)return;
+  const p=career.players.find(x=>x.id===id);
+  if(!p)return;
+  p.position=document.getElementById('edit-pl-position').value;
+  save();closeModal('edit-player-modal');renderFormation();populatePlayers();
+}
+
 let openMenuId=null;
 document.addEventListener('click',function(e){if(openMenuId&&!e.target.closest('.player-menu')&&!e.target.closest('.pitch-player')){openMenuId=null;renderFormation();}});
 function showPlayerMenu(id,e){if(isViewingFriend)return;e.stopPropagation();openMenuId=openMenuId===id?null:id;renderFormation();}
@@ -1370,7 +1397,7 @@ function renderSquadDepthChart(players,team){
     </svg>
   </div>`;
 }
-function renderFormation(){if(!career){document.getElementById('pitch').innerHTML='<div class="no-data" style="padding:60px 20px">Maak eerst een career mode aan</div>';document.getElementById('bench-list').innerHTML='';document.getElementById('manager-card').innerHTML='';document.getElementById('squad-depth-chart').innerHTML='';return;}const form=career.formation||'4-3-3';document.getElementById('formation-select').value=form;const spots=FORMATIONS[form]||FORMATIONS['4-3-3'];const assigned=getSpotAssignments();const bench=career.players.filter(p=>!p.starter);let html='';spots.forEach((spot,i)=>{const player=assigned[i];if(player){const photoHtml=player.photo?`<img src="${player.photo}">`:esc(getInitials(player.name));const menuOpen=openMenuId===player.id;html+=`<div class="pitch-player" style="left:${spot.x}%;top:${spot.y}%;${menuOpen?'z-index:60':''}" onclick="showPlayerMenu('${player.id}',event)"><div class="player-photo">${photoHtml}</div><div class="player-name">${esc(player.name)}</div><div class="player-rating">${player.rating} | ${spot.p}</div>${menuOpen?`<div class="player-menu" onclick="event.stopPropagation()"><div onclick="changePlayerPhoto('${player.id}');openMenuId=null;"><i class="fa-solid fa-camera"></i> Foto wijzigen</div><div onclick="movePlayerToSpot('${player.id}')"><i class="fa-solid fa-arrows-up-down-left-right"></i> Verplaatsen</div><div onclick="toggleStarter('${player.id}')"><i class="fa-solid fa-arrow-down"></i> Naar bank</div><div onclick="deletePlayer('${player.id}')"><i class="fa-solid fa-trash" style="color:#f44336"></i> Verwijderen</div></div>`:''}</div>`;}else{html+=`<div class="pitch-player" style="left:${spot.x}%;top:${spot.y}%"><div class="player-photo" style="opacity:0.3">+</div><div class="player-name" style="opacity:0.4">${spot.p}</div></div>`;}});document.getElementById('pitch').innerHTML=html;document.getElementById('bench-list').innerHTML=bench.length?bench.map(p=>`<div class="player-card"><div class="p-photo" style="cursor:pointer" onclick="changePlayerPhoto('${p.id}')">${p.photo?`<img src="${p.photo}">`:esc(getInitials(p.name))}</div><div class="p-info"><div class="p-name">${esc(p.name)}</div><div class="p-detail">${p.position} | ${p.rating} OVR</div></div>${isViewingFriend?'':`<button class="btn btn-outline btn-sm" onclick="movePlayerToSpot('${p.id}')" title="Naar positie"><i class="fa-solid fa-arrow-up"></i></button><button class="btn btn-danger btn-sm" onclick="deletePlayer('${p.id}')"><i class="fa-solid fa-trash"></i></button>`}</div>`).join(''):'<div class="no-data" style="padding:20px">Geen spelers op de bank</div>';document.getElementById('squad-depth-chart').innerHTML=renderSquadDepthChart(career.players,career.team);renderManager();}
+function renderFormation(){if(!career){document.getElementById('pitch').innerHTML='<div class="no-data" style="padding:60px 20px">Maak eerst een career mode aan</div>';document.getElementById('bench-list').innerHTML='';document.getElementById('manager-card').innerHTML='';document.getElementById('squad-depth-chart').innerHTML='';return;}const form=career.formation||'4-3-3';document.getElementById('formation-select').value=form;const spots=FORMATIONS[form]||FORMATIONS['4-3-3'];const assigned=getSpotAssignments();const bench=career.players.filter(p=>!p.starter);let html='';spots.forEach((spot,i)=>{const player=assigned[i];if(player){const photoHtml=player.photo?`<img src="${player.photo}">`:esc(getInitials(player.name));const menuOpen=openMenuId===player.id;html+=`<div class="pitch-player" style="left:${spot.x}%;top:${spot.y}%;${menuOpen?'z-index:60':''}" onclick="showPlayerMenu('${player.id}',event)"><div class="player-photo">${photoHtml}</div><div class="player-name">${esc(player.name)}</div><div class="player-rating">${player.rating} | ${spot.p}</div>${menuOpen?`<div class="player-menu" onclick="event.stopPropagation()"><div onclick="changePlayerPhoto('${player.id}');openMenuId=null;"><i class="fa-solid fa-camera"></i> Foto wijzigen</div><div onclick="changePlayerPosition('${player.id}')"><i class="fa-solid fa-user-pen"></i> Positie wijzigen</div><div onclick="movePlayerToSpot('${player.id}')"><i class="fa-solid fa-arrows-up-down-left-right"></i> Verplaatsen</div><div onclick="toggleStarter('${player.id}')"><i class="fa-solid fa-arrow-down"></i> Naar bank</div><div onclick="deletePlayer('${player.id}')"><i class="fa-solid fa-trash" style="color:#f44336"></i> Verwijderen</div></div>`:''}</div>`;}else{html+=`<div class="pitch-player" style="left:${spot.x}%;top:${spot.y}%"><div class="player-photo" style="opacity:0.3">+</div><div class="player-name" style="opacity:0.4">${spot.p}</div></div>`;}});document.getElementById('pitch').innerHTML=html;document.getElementById('bench-list').innerHTML=bench.length?bench.map(p=>`<div class="player-card"><div class="p-photo" style="cursor:pointer" onclick="changePlayerPhoto('${p.id}')">${p.photo?`<img src="${p.photo}">`:esc(getInitials(p.name))}</div><div class="p-info"><div class="p-name">${esc(p.name)}</div><div class="p-detail">${p.position} | ${p.rating} OVR</div></div>${isViewingFriend?'':`<button class="btn btn-outline btn-sm" onclick="changePlayerPosition('${p.id}')" title="Positie wijzigen"><i class="fa-solid fa-user-pen"></i></button><button class="btn btn-outline btn-sm" onclick="movePlayerToSpot('${p.id}')" title="Naar positie"><i class="fa-solid fa-arrow-up"></i></button><button class="btn btn-danger btn-sm" onclick="deletePlayer('${p.id}')"><i class="fa-solid fa-trash"></i></button>`}</div>`).join(''):'<div class="no-data" style="padding:20px">Geen spelers op de bank</div>';document.getElementById('squad-depth-chart').innerHTML=renderSquadDepthChart(career.players,career.team);renderManager();}
 
 function renderManager(){
   const el=document.getElementById('manager-card');
