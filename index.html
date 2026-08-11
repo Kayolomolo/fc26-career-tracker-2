@@ -71,6 +71,13 @@ header p { color: #888; margin-top: 4px; font-size: 13px; }
 .form-row label { font-size: 12px; color: #888; min-width: 70px; }
 select, input[type="text"], input[type="number"], textarea { background: #0a0e1a; border: 1px solid #1e2a3a; color: #e0e0e0; padding: 10px 12px; border-radius: 8px; font-size: 16px; font-family: inherit; -webkit-appearance: none; }
 select { min-width: 140px; }
+.team-pick-btn { min-width: 140px; flex: 1; display: flex; align-items: center; gap: 8px; background: #0a0e1a; border: 1px solid #1e2a3a; color: #e0e0e0; padding: 10px 12px; border-radius: 8px; font-size: 16px; font-family: inherit; cursor: pointer; text-align: left; }
+.team-pick-btn .team-logo-sm { flex-shrink: 0; }
+.team-pick-btn .tp-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.team-pick-btn .tp-caret { margin-left: auto; color: #666; font-size: 12px; flex-shrink: 0; }
+.team-picker-list { max-height: 50vh; overflow-y: auto; display: flex; flex-direction: column; gap: 4px; }
+.team-pick-item { display: flex; align-items: center; gap: 10px; width: 100%; background: #0d1420; border: 1px solid #1e2a3a; color: #ccc; padding: 10px 12px; border-radius: 8px; font-size: 15px; font-family: inherit; cursor: pointer; text-align: left; }
+.team-pick-item.active { border-color: var(--accent); color: var(--accent); font-weight: 600; }
 input[type="number"] { width: 60px; text-align: center; }
 textarea { width: 100%; min-height: 60px; resize: vertical; }
 
@@ -405,7 +412,8 @@ textarea { width: 100%; min-height: 60px; resize: vertical; }
         </div>
         <div class="form-row">
           <label>Thuis</label>
-          <select id="match-home"></select>
+          <input type="hidden" id="match-home">
+          <button type="button" class="team-pick-btn" id="btn-match-home" onclick="openTeamPicker('match-home')"></button>
         </div>
         <div class="form-row">
           <label>Score</label>
@@ -413,7 +421,8 @@ textarea { width: 100%; min-height: 60px; resize: vertical; }
         </div>
         <div class="form-row">
           <label>Uit</label>
-          <select id="match-away"></select>
+          <input type="hidden" id="match-away">
+          <button type="button" class="team-pick-btn" id="btn-match-away" onclick="openTeamPicker('match-away')"></button>
         </div>
         <div class="form-row">
           <label>Penalty's?</label>
@@ -1126,7 +1135,52 @@ function saveCareer(){const name=document.getElementById('cm-name').value.trim()
 
 function populateSeasons(){if(!career)return;['match-season','filter-season','standing-season','view-standing-season','stats-season','prog-season','tf-season','tf-filter-season'].forEach(id=>{const el=document.getElementById(id);if(!el)return;const val=el.value;const isFilter=id.startsWith('filter')||id.startsWith('view')||id.startsWith('stats')||id==='tf-filter-season';el.innerHTML=isFilter?'<option value="">Alle seizoenen</option>':'';career.seasons.forEach(s=>el.innerHTML+=`<option>${s}</option>`);if(val&&career.seasons.includes(val)){el.value=val;}else if(!isFilter&&career.seasons.length){el.value=career.seasons[career.seasons.length-1];}});}
 function populateComps(){const league=getLeague();['match-comp','filter-comp','stats-comp'].forEach(id=>{const el=document.getElementById(id);if(!el)return;const val=el.value;const isFilter=id.startsWith('filter')||id.startsWith('stats');el.innerHTML=isFilter?'<option value="">Alle competities</option>':'';league.comps.forEach(c=>el.innerHTML+=`<option>${c}</option>`);if(val)el.value=val;});}
-function populateTeamSelects(){const sorted=[...data.teams].sort((a,b)=>a.name.localeCompare(b.name));['match-home','match-away'].forEach(id=>{const el=document.getElementById(id);if(!el)return;const val=el.value;el.innerHTML=sorted.map(t=>`<option>${esc(t.name)}</option>`).join('');if(career)el.value=val||career.team;});}
+function populateTeamSelects(){['match-home','match-away'].forEach(id=>{const el=document.getElementById(id);if(!el)return;const val=el.value;if(!val||!data.teams.some(t=>t.name===val)){el.value=career?career.team:(data.teams[0]?data.teams[0].name:'');}updateTeamPickBtn(id);});}
+
+function updateTeamPickBtn(id){
+  const btn=document.getElementById('btn-'+id);
+  const el=document.getElementById(id);
+  if(!btn||!el)return;
+  const val=el.value;
+  btn.innerHTML=val
+    ?`${teamLogoSm(val)}<span class="tp-name">${esc(val)}</span><i class="fa-solid fa-chevron-down tp-caret"></i>`
+    :`<span class="tp-name" style="color:#666">Kies een team</span><i class="fa-solid fa-chevron-down tp-caret"></i>`;
+}
+
+let _teamPickerTarget=null;
+function openTeamPicker(targetId){
+  _teamPickerTarget=targetId;
+  let overlay=document.getElementById('team-picker');
+  if(!overlay){overlay=document.createElement('div');overlay.id='team-picker';overlay.className='modal-overlay';document.body.appendChild(overlay);}
+  overlay.innerHTML=`<div class="modal">
+    <h3><i class="fa-solid fa-shield-halved"></i> Kies een team</h3>
+    <div class="search-wrap" style="position:relative;margin-bottom:10px">
+      <i class="fa-solid fa-magnifying-glass" style="position:absolute;left:11px;top:50%;transform:translateY(-50%);color:#666;font-size:13px;pointer-events:none"></i>
+      <input type="text" id="team-picker-search" placeholder="Zoek een team..." style="width:100%;padding-left:32px" oninput="renderTeamPickerList()">
+    </div>
+    <div id="team-picker-list" class="team-picker-list"></div>
+    <div style="display:flex;justify-content:flex-end;margin-top:12px"><button class="btn btn-outline" onclick="closeModal('team-picker')">Annuleren</button></div>
+  </div>`;
+  overlay.classList.add('show');
+  renderTeamPickerList();
+}
+function renderTeamPickerList(){
+  const el=document.getElementById('team-picker-list');
+  if(!el)return;
+  const q=(document.getElementById('team-picker-search')?.value||'').trim().toLowerCase();
+  const cur=_teamPickerTarget?(document.getElementById(_teamPickerTarget)?.value||''):'';
+  let teams=[...data.teams].sort((a,b)=>a.name.localeCompare(b.name));
+  if(q)teams=teams.filter(t=>t.name.toLowerCase().includes(q));
+  el.innerHTML=teams.length
+    ?teams.map(t=>`<button type="button" class="team-pick-item${t.name===cur?' active':''}" onclick="pickTeam('${jsAttr(t.name)}')">${teamLogoSm(t.name)}<span>${esc(t.name)}</span></button>`).join('')
+    :'<div class="no-data" style="padding:16px">Geen teams gevonden</div>';
+}
+function pickTeam(name){
+  if(!_teamPickerTarget)return;
+  const el=document.getElementById(_teamPickerTarget);
+  if(el){el.value=name;updateTeamPickBtn(_teamPickerTarget);}
+  closeModal('team-picker');
+}
 function populateStandingInputs(){const league=getLeague();const el=document.getElementById('standing-inputs');el.innerHTML=league.trophies.map(t=>{if(t.type==='pos')return`<div class="standing-input"><label>${t.label} - Positie</label><input type="number" id="pos-${t.id}" min="1" max="${t.max}" placeholder="Positie (1-${t.max})"></div><div class="standing-input"><label>${t.label} - Punten</label><input type="number" id="pts-${t.id}" min="0" placeholder="Punten"></div>`;if(t.type==='round')return`<div class="standing-input"><label>${t.label}</label><select id="pos-${t.id}"><option value="">-- Kies --</option>${ROUND_OPTIONS.map(o=>`<option>${o}</option>`).join('')}</select></div>`;return`<div class="standing-input"><label>${t.label}</label><select id="pos-${t.id}"><option value="">-- Kies --</option>${FINAL_OPTIONS.map(o=>`<option>${o}</option>`).join('')}</select></div>`;}).join('');}
 function populatePlayers(){if(!career)return;['prog-player','chart-player'].forEach(id=>{const el=document.getElementById(id);if(!el)return;const val=el.value;const isChart=id==='chart-player';el.innerHTML=isChart?'<option value="">Kies een speler</option>':'';career.players.sort((a,b)=>a.name.localeCompare(b.name)).forEach(p=>el.innerHTML+=`<option value="${p.id}">${esc(p.name)} (${p.position})</option>`);if(val)el.value=val;});}
 
