@@ -320,7 +320,7 @@ textarea { width: 100%; min-height: 60px; resize: vertical; }
       <button onclick="showMyCode()"><i class="fa-solid fa-key"></i> Mijn code</button>
       <button onclick="showImportModal()"><i class="fa-solid fa-file-import"></i> Importeren</button>
       <button onclick="askOptimizeImages()"><i class="fa-solid fa-compress"></i> Opslag</button>
-      <button onclick="exportBackup()"><i class="fa-solid fa-download"></i> Back-up</button>
+      <button onclick="showBackupModal()"><i class="fa-solid fa-shield-halved"></i> Back-up</button>
       <button onclick="doLogout()"><i class="fa-solid fa-right-from-bracket"></i> Uitloggen</button>
     </div>
     <div class="sync-status" id="sync-status"></div>
@@ -1234,7 +1234,7 @@ function populateStandingInputs(){const league=getLeague();const el=document.get
 function populatePlayers(){if(!career)return;['prog-player','chart-player'].forEach(id=>{const el=document.getElementById(id);if(!el)return;const val=el.value;const isChart=id==='chart-player';el.innerHTML=isChart?'<option value="">Kies een speler</option>':'';career.players.sort((a,b)=>a.name.localeCompare(b.name)).forEach(p=>el.innerHTML+=`<option value="${p.id}">${esc(p.name)} (${p.position})</option>`);if(val)el.value=val;});}
 
 function nextSeasonName(current){const m=current.match(/(\d{2})\/(\d{2})/);if(m){const a=parseInt(m[2]),b=a+1;return`${String(a).padStart(2,'0')}/${String(b%100).padStart(2,'0')}`;}return null;}
-function addSeason(){if(!career||isViewingFriend)return;const last=career.seasons[career.seasons.length-1];const next=nextSeasonName(last);const name=next||prompt('Seizoen naam (bijv. 25/26):');if(name&&!career.seasons.includes(name)){career.seasons.push(name);save();populateSeasons();document.getElementById('match-season').value=name;document.getElementById('match-day').value=1;}}
+function addSeason(){if(!career||isViewingFriend)return;const last=career.seasons[career.seasons.length-1];const next=nextSeasonName(last);const name=next||prompt('Seizoen naam (bijv. 25/26):');if(name&&!career.seasons.includes(name)){makeSeasonSnapshot('nieuw seizoen '+name);career.seasons.push(name);save();populateSeasons();document.getElementById('match-season').value=name;document.getElementById('match-day').value=1;}}
 
 const EURO_COMPS = ['Champions League','Europa League','Conference League'];
 const CUP_COMPS = ['KNVB Beker','FA Cup','EFL Cup','DFB-Pokal','Coupe de France','Copa del Rey','Coppa Italia'];
@@ -1442,7 +1442,7 @@ function renderFavorites(){
   el.innerHTML=favs.map(m=>buildMatchCard(m,allMatches)).join('');
 }
 
-function saveStanding(){if(!career||isViewingFriend)return;const season=document.getElementById('standing-season').value;if(!season)return;const league=getLeague();const st={};league.trophies.forEach(t=>{st[t.id]=document.getElementById('pos-'+t.id)?.value||'';if(t.type==='pos'){const ptsEl=document.getElementById('pts-'+t.id);if(ptsEl)st[t.id+'_pts']=ptsEl.value||'';}});career.standings[season]=st;const next=nextSeasonName(season);if(next&&!career.seasons.includes(next)){career.seasons.push(next);populateSeasons();document.getElementById('match-season').value=next;document.getElementById('match-day').value=1;}save();renderStandings();alert('Opgeslagen!');}
+function saveStanding(){if(!career||isViewingFriend)return;const season=document.getElementById('standing-season').value;if(!season)return;const league=getLeague();const st={};league.trophies.forEach(t=>{st[t.id]=document.getElementById('pos-'+t.id)?.value||'';if(t.type==='pos'){const ptsEl=document.getElementById('pts-'+t.id);if(ptsEl)st[t.id+'_pts']=ptsEl.value||'';}});career.standings[season]=st;const next=nextSeasonName(season);if(next&&!career.seasons.includes(next)){makeSeasonSnapshot('nieuw seizoen '+next);career.seasons.push(next);populateSeasons();document.getElementById('match-season').value=next;document.getElementById('match-day').value=1;}save();renderStandings();alert('Opgeslagen!');}
 function posClass(val){if(val==='Winnaar')return'gold';if(val==='Finalist'||val==='Verliezer')return'silver';if(val==='Halve finale')return'bronze';if(val==='Kwartfinale')return'blue';if(val==='Achtste finale'||val==='Zestiende finale'||val==='Groepsfase'||val==='Eerste ronde'||val==='Tweede ronde'||val==='Derde ronde')return'gray';return'';}
 function trophyDisplay(t,val){if(!val||val==='Niet deelgenomen')return{text:'n.v.t.',cls:'none'};if(t.type==='pos')return{text:'#'+val,cls:val==='1'?'gold':val==='2'?'silver':val==='3'?'bronze':'gray'};return{text:val,cls:posClass(val)};}
 function renderStandings(){const el=document.getElementById('standings-grid');if(!career){el.innerHTML='<div class="no-data">Maak eerst een career mode aan</div>';return;}const season=document.getElementById('view-standing-season').value;const league=getLeague();const seasonsToShow=season?[season]:career.seasons;let html='';seasonsToShow.forEach(s=>{const st=career.standings[s];if(!st)return;html+=`<div style="grid-column:1/-1;font-size:16px;font-weight:600;margin-top:12px;color:var(--accent)">${esc(s)}</div>`;html+=league.trophies.map(t=>{const val=st[t.id];const pts=st[t.id+'_pts'];const{text,cls}=trophyDisplay(t,val);const ptsHtml=pts?`<div style="font-size:13px;color:#888;margin-top:4px">${pts} punten</div>`:'';return`<div class="standing-card"><h4>${t.label}</h4><div class="position ${cls}">${text}</div>${ptsHtml}</div>`;}).join('');});if(!html)html='<div class="no-data">Nog geen klassementen opgeslagen</div>';el.innerHTML=html;}
@@ -1505,6 +1505,93 @@ function addEnglishTeams(){
   const q=document.getElementById('filter-team-manage'); if(q)q.value='';
   renderTeams();
   alert(missing.length+' clubs toegevoegd.');
+}
+
+// ---- Seizoensback-up op het apparaat zelf ----
+// Wordt alleen gemaakt bij het starten van een nieuw seizoen. Afgelopen
+// seizoenen kun je nergens meer terugzoeken, het lopende seizoen wel.
+const SNAP_KEY='fc26_season_snapshot';
+
+function countMatches(d){
+  try{ return (d.careers||[]).reduce((n,c)=>n+((c.matches||[]).length),0); }catch(e){ return 0; }
+}
+function readSnapshot(){
+  try{ const raw=localStorage.getItem(SNAP_KEY); return raw?JSON.parse(raw):null; }catch(e){ return null; }
+}
+function stripPhotos(d){
+  const c=JSON.parse(JSON.stringify(d));
+  (c.teams||[]).forEach(t=>{if(t.logo&&t.logo.indexOf('data:')===0)t.logo='';});
+  (c.careers||[]).forEach(cr=>{
+    (cr.players||[]).forEach(p=>{p.photo='';});
+    if(cr.manager)cr.manager.photo='';
+  });
+  return c;
+}
+function makeSeasonSnapshot(reason){
+  if(!dataLoaded||isViewingFriend)return false;
+  const matches=countMatches(data);
+  const prev=readSnapshot();
+  // Veiligheid: een kleinere stand nooit over een grotere back-up heen schrijven.
+  if(prev&&typeof prev.matches==='number'&&matches<prev.matches){
+    console.warn('Seizoensback-up overgeslagen: minder wedstrijden dan de bestaande back-up.');
+    return false;
+  }
+  const payload={savedAt:new Date().toISOString(),reason:reason||'',matches,data};
+  try{
+    localStorage.setItem(SNAP_KEY,JSON.stringify(payload));
+    return true;
+  }catch(e){
+    // Te groot voor de browser: opnieuw zonder foto's (dat is verreweg het grootst).
+    try{
+      localStorage.setItem(SNAP_KEY,JSON.stringify({...payload,data:stripPhotos(data),photos:false}));
+      return true;
+    }catch(e2){ console.warn('Seizoensback-up past niet in de browseropslag.'); return false; }
+  }
+}
+function restoreSeasonSnapshot(){
+  if(isViewingFriend)return;
+  if(!dataLoaded){alert('Je gegevens zijn niet geladen. Probeer het opnieuw met internet.');return;}
+  const snap=readSnapshot();
+  if(!snap||!snap.data){alert('Er staat nog geen seizoensback-up op dit apparaat.\n\nDie wordt automatisch gemaakt zodra je een nieuw seizoen start.');return;}
+  const d=new Date(snap.savedAt);
+  const nu=countMatches(data);
+  if(!confirm('Back-up van '+d.toLocaleDateString('nl-NL')+' terugzetten?\n\nIn de back-up: '+snap.matches+' wedstrijden.\nNu in de app: '+nu+' wedstrijden.'+
+    (snap.photos===false?'\n\nLet op: in deze back-up zitten geen foto\'s/logo\'s (die pasten niet).':'')+
+    '\n\nAlles wat er nu in staat wordt hiermee vervangen.'))return;
+  data=JSON.parse(JSON.stringify(snap.data));
+  if(!data.teams||!data.teams.length)data.teams=defaultTeams;
+  if(!data.careers)data.careers=[];
+  career=data.activeCareerId?(data.careers.find(c=>c.id===data.activeCareerId)||null):null;
+  save();applyTheme();renderCareerBar();refreshAll();renderTeams();
+  alert('Back-up teruggezet.');
+}
+
+function showBackupModal(){
+  if(isViewingFriend)return;
+  const snap=readSnapshot();
+  let snapInfo;
+  if(snap&&snap.data){
+    const d=new Date(snap.savedAt);
+    snapInfo='<div style="font-size:13px;color:#ccc">Laatste seizoensback-up:<br><b>'+d.toLocaleDateString('nl-NL')+' '+d.toLocaleTimeString('nl-NL',{hour:'2-digit',minute:'2-digit'})+'</b> &middot; '+snap.matches+' wedstrijden'+
+      (snap.photos===false?'<br><span style="color:#FF9800;font-size:12px">zonder foto\'s (die pasten niet)</span>':'')+'</div>';
+  }else{
+    snapInfo='<div style="font-size:13px;color:#888">Nog geen seizoensback-up. Die wordt automatisch gemaakt zodra je een nieuw seizoen start.</div>';
+  }
+  const html='<div class="modal">'+
+    '<h3><i class="fa-solid fa-shield-halved"></i> Back-up</h3>'+
+    '<p style="font-size:13px;color:#888;margin-bottom:12px">Je gegevens staan online. Bij het starten van een nieuw seizoen bewaart de app ook automatisch een kopie op dit apparaat.</p>'+
+    '<div style="background:#0d1420;border:1px solid #1e2a3a;border-radius:8px;padding:12px;margin-bottom:14px">'+snapInfo+
+      '<div style="font-size:12px;color:#666;margin-top:8px">Nu in de app: '+countMatches(data)+' wedstrijden &middot; '+dataSizeKB()+' KB</div></div>'+
+    '<div style="display:flex;flex-direction:column;gap:8px">'+
+      '<button class="btn btn-primary" onclick="exportBackup()"><i class="fa-solid fa-download"></i> Back-upbestand downloaden</button>'+
+      '<button class="btn btn-outline" onclick="if(makeSeasonSnapshot(\'handmatig\')){closeModal(\'backup-modal\');alert(\'Back-up op dit apparaat bijgewerkt.\');}else{alert(\'Back-up niet bijgewerkt (er staat al een grotere back-up, of hij past niet).\');}"><i class="fa-solid fa-mobile-screen"></i> Nu een kopie op dit apparaat maken</button>'+
+      '<button class="btn btn-outline" onclick="closeModal(\'backup-modal\');restoreSeasonSnapshot()"><i class="fa-solid fa-rotate-left"></i> Back-up van dit apparaat terugzetten</button>'+
+    '</div>'+
+    '<div style="display:flex;justify-content:flex-end;margin-top:14px"><button class="btn btn-outline" onclick="closeModal(\'backup-modal\')">Sluiten</button></div>'+
+  '</div>';
+  let overlay=document.getElementById('backup-modal');
+  if(!overlay){overlay=document.createElement('div');overlay.id='backup-modal';overlay.className='modal-overlay';document.body.appendChild(overlay);}
+  overlay.innerHTML=html;overlay.classList.add('show');
 }
 
 function exportBackup(){
