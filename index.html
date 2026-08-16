@@ -1182,7 +1182,7 @@ function getInitials(n){return n.split(' ').filter(w=>w.length>1&&w[0]===w[0].to
 function teamLogo(name,size){const s=size||32;const team=data.teams.find(t=>t.name===name);if(!team)return`<div class="team-logo" style="width:${s}px;height:${s}px">${esc((name||'?').slice(0,2))}</div>`;if(team.logo)return`<div class="team-logo" style="width:${s}px;height:${s}px"><img src="${esc(team.logo)}" alt="${esc(name)}"></div>`;return`<div class="team-logo" style="width:${s}px;height:${s}px;background:${team.color};color:#fff;font-size:${Math.round(s/3)}px">${esc(getInitials(name))}</div>`;}
 function teamLogoSm(name){const team=data.teams.find(t=>t.name===name);if(!team)return`<div class="team-logo-sm">${esc((name||'').slice(0,2))}</div>`;if(team.logo)return`<div class="team-logo-sm"><img src="${esc(team.logo)}"></div>`;return`<div class="team-logo-sm" style="background:${team.color};color:#fff">${esc(getInitials(name))}</div>`;}
 function showModal(id){document.getElementById(id).classList.add('show');}
-function closeModal(id){document.getElementById(id).classList.remove('show');}
+function closeModal(id){const el=document.getElementById(id);if(el)el.classList.remove('show');}
 function getLeague(){return career?LEAGUES[career.country]:LEAGUES.nl;}
 
 function renderCareerBar(){const bar=document.getElementById('career-bar');bar.innerHTML=data.careers.map(c=>`<div class="career-chip ${c.id===data.activeCareerId?'active':''}" onclick="switchCareer('${c.id}')">${teamLogoSm(c.team)} ${esc(c.name)}${isViewingFriend?'':`<i class="fa-solid fa-xmark" style="font-size:10px;margin-left:4px;opacity:0.5" onclick="event.stopPropagation();deleteCareer('${c.id}')" title="Verwijderen"></i>`}</div>`).join('')+(isViewingFriend?'':`<div class="career-chip" onclick="showModal('career-modal');populateCareerModal()"><i class="fa-solid fa-plus"></i> Nieuwe career</div>`);}
@@ -1592,21 +1592,22 @@ function removeTeamsWithoutLogo(){
   const protectedCount=data.teams.filter(t=>!hasLogo(t)&&inUse.has(t.name)).length;
   if(!removable.length){
     alert(protectedCount
-      ? 'Niets te verwijderen.\n\n'+protectedCount+' teams hebben geen logo, maar die blijven staan omdat je ze gebruikt in wedstrijden of als clubteam.'
+      ? 'Niets te verwijderen.\n\n'+protectedCount+(protectedCount===1?' team heeft':' teams hebben')+' geen logo, maar '+(protectedCount===1?'die blijft':'die blijven')+' staan omdat je ze gebruikt in wedstrijden of als clubteam.'
       : 'Alle teams hebben al een logo.');
     return;
   }
-  if(!confirm(removable.length+' teams zonder logo verwijderen?'+
-    (protectedCount?'\n\n'+protectedCount+' teams zonder logo blijven wel staan, omdat je ze gebruikt in wedstrijden of als clubteam.':'')+
+  if(!confirm(removable.length+(removable.length===1?' team':' teams')+' zonder logo verwijderen?'+
+    (protectedCount?'\n\n'+protectedCount+(protectedCount===1?' team zonder logo blijft':' teams zonder logo blijven')+' wel staan, omdat je ze gebruikt in wedstrijden of als clubteam.':'')+
     '\n\nEr wordt eerst een kopie op dit apparaat gezet. Ging er iets mis? Dan kun je die terugzetten via de knop Back-up.'))return;
-  makeSeasonSnapshot('voor opschonen teams');
+  const snapRes=makeSeasonSnapshot('voor opschonen teams');
+  if(!snapRes.ok&&!confirm('Let op: er kon geen kopie op dit apparaat gezet worden'+(snapRes.why==='quota'?' (te weinig ruimte in je browser)':'')+'.\n\nToch doorgaan met verwijderen?'))return;
   const namesToRemove=new Set(removable.map(t=>t.name));
   data.teams=data.teams.filter(t=>!namesToRemove.has(t.name));
   save();
   populateTeamSelects();
   const q=document.getElementById('filter-team-manage'); if(q)q.value='';
   renderTeams();
-  alert(removable.length+' teams verwijderd.');
+  alert(removable.length+(removable.length===1?' team verwijderd.':' teams verwijderd.'));
 }
 
 // ---- Seizoensback-up op het apparaat zelf ----
@@ -1629,25 +1630,44 @@ function stripPhotos(d){
   });
   return c;
 }
-function makeSeasonSnapshot(reason){
-  if(!dataLoaded||isViewingFriend)return false;
+// Geeft {ok:true,...} terug, of {ok:false,why:'notloaded'|'smaller'|'quota'}.
+// Automatische back-ups slaan een kleinere stand over; handmatig kan de
+// gebruiker dat met force overrulen (bijv. na bewust opruimen).
+function makeSeasonSnapshot(reason,opts){
+  opts=opts||{};
+  if(!dataLoaded||isViewingFriend)return{ok:false,why:'notloaded'};
   const matches=countMatches(data);
   const prev=readSnapshot();
-  // Veiligheid: een kleinere stand nooit over een grotere back-up heen schrijven.
-  if(prev&&typeof prev.matches==='number'&&matches<prev.matches){
+  if(!opts.force&&prev&&typeof prev.matches==='number'&&matches<prev.matches){
     console.warn('Seizoensback-up overgeslagen: minder wedstrijden dan de bestaande back-up.');
-    return false;
+    return{ok:false,why:'smaller',prevMatches:prev.matches,matches};
   }
   const payload={savedAt:new Date().toISOString(),reason:reason||'',matches,data};
   try{
     localStorage.setItem(SNAP_KEY,JSON.stringify(payload));
-    return true;
+    return{ok:true,photos:true};
   }catch(e){
     // Te groot voor de browser: opnieuw zonder foto's (dat is verreweg het grootst).
     try{
       localStorage.setItem(SNAP_KEY,JSON.stringify({...payload,data:stripPhotos(data),photos:false}));
-      return true;
-    }catch(e2){ console.warn('Seizoensback-up past niet in de browseropslag.'); return false; }
+      return{ok:true,photos:false};
+    }catch(e2){ console.warn('Seizoensback-up past niet in de browseropslag.'); return{ok:false,why:'quota'}; }
+  }
+}
+
+function manualSnapshot(){
+  let r=makeSeasonSnapshot('handmatig');
+  if(!r.ok&&r.why==='smaller'){
+    if(!confirm('Let op: in de back-up op dit apparaat staan '+r.prevMatches+' wedstrijden, en nu heb je er '+r.matches+'.\n\nDat kan kloppen als je bewust dingen hebt opgeruimd of verwijderd.\n\nWil je de back-up vervangen door de stand van nu?'))return;
+    r=makeSeasonSnapshot('handmatig',{force:true});
+  }
+  if(r.ok){
+    closeModal('backup-modal');
+    alert('Back-up op dit apparaat bijgewerkt.'+(r.photos===false?'\n\nLet op: zonder foto\'s, want met foto\'s paste hij niet in de opslag van je browser.':''));
+  }else if(r.why==='quota'){
+    alert('De back-up past niet in de opslag van je browser, ook niet zonder foto\'s.\n\nGebruik "Back-upbestand downloaden" om toch een kopie te bewaren.');
+  }else{
+    alert('Je gegevens zijn niet geladen. Probeer het opnieuw met internet.');
   }
 }
 function restoreSeasonSnapshot(){
@@ -1686,7 +1706,7 @@ function showBackupModal(){
       '<div style="font-size:12px;color:#666;margin-top:8px">Nu in de app: '+countMatches(data)+' wedstrijden &middot; '+dataSizeKB()+' KB</div></div>'+
     '<div style="display:flex;flex-direction:column;gap:8px">'+
       '<button class="btn btn-primary" onclick="exportBackup()"><i class="fa-solid fa-download"></i> Back-upbestand downloaden</button>'+
-      '<button class="btn btn-outline" onclick="if(makeSeasonSnapshot(\'handmatig\')){closeModal(\'backup-modal\');alert(\'Back-up op dit apparaat bijgewerkt.\');}else{alert(\'Back-up niet bijgewerkt (er staat al een grotere back-up, of hij past niet).\');}"><i class="fa-solid fa-mobile-screen"></i> Nu een kopie op dit apparaat maken</button>'+
+      '<button class="btn btn-outline" onclick="manualSnapshot()"><i class="fa-solid fa-mobile-screen"></i> Nu een kopie op dit apparaat maken</button>'+
       '<button class="btn btn-outline" onclick="closeModal(\'backup-modal\');restoreSeasonSnapshot()"><i class="fa-solid fa-rotate-left"></i> Back-up van dit apparaat terugzetten</button>'+
     '</div>'+
     '<div style="display:flex;justify-content:flex-end;margin-top:14px"><button class="btn btn-outline" onclick="closeModal(\'backup-modal\')">Sluiten</button></div>'+
