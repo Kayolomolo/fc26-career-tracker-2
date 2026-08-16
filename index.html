@@ -888,7 +888,10 @@ function doLogout() {
 }
 
 let unsubscribeSync = null;
-let ignoreNextSync = false;
+let localVersion = 0;   // opgehoogd bij elke lokale wijziging
+let syncedVersion = 0;  // laatst succesvol opgeslagen versie
+let saveInFlight = false;
+let saveErrorShown = false;
 
 async function loadUserData(uid, name) {
   currentUserId = uid;
@@ -989,8 +992,11 @@ function startRealtimeSync(uid) {
   if (unsubscribeSync) unsubscribeSync();
   unsubscribeSync = db.collection('users').doc(uid).collection('data').doc('main')
     .onSnapshot(doc => {
-      if (ignoreNextSync) { ignoreNextSync = false; return; }
       if (!doc.exists || isViewingFriend) return;
+      // Eigen schrijfactie: Firestore stuurt die direct terug als lokale echo.
+      if (doc.metadata && doc.metadata.hasPendingWrites) return;
+      // Nog niet opgeslagen lokale wijzigingen: nooit overschrijven met serverdata.
+      if (saveInFlight || localVersion > syncedVersion) return;
       const newData = doc.data();
       if (!newData) return;
       if (!newData.teams || !newData.teams.length) newData.teams = defaultTeams;
@@ -1018,20 +1024,37 @@ auth.onAuthStateChanged(async user => {
 
 async function saveToFirebase() {
   if (!currentUserId || isViewingFriend) return;
+  // Nooit twee schrijfacties tegelijk: even wachten en opnieuw proberen.
+  if (saveInFlight) { clearTimeout(saveTimeout); saveTimeout = setTimeout(saveToFirebase, 300); return; }
+  const version = localVersion;
+  saveInFlight = true;
   setSyncStatus('Opslaan...');
-  ignoreNextSync = true;
   try {
     await db.collection('users').doc(currentUserId).collection('data').doc('main').set(data);
-    setSyncStatus('Gesynchroniseerd (live)');
+    if (version > syncedVersion) syncedVersion = version;
+    saveErrorShown = false;
+    setSyncStatus(localVersion > syncedVersion ? 'Opslaan...' : 'Gesynchroniseerd (live)');
   } catch(e) {
+    console.error('Opslaan mislukt:', e);
     setSyncStatus('Fout bij opslaan!');
-    console.error(e);
-    ignoreNextSync = false;
+    // syncedVersion blijft achter, dus de live-sync overschrijft je wijziging niet.
+    if (!saveErrorShown) {
+      saveErrorShown = true;
+      let msg = 'Opslaan mislukt: ' + (e.message || e.code || 'onbekende fout') + '\n\nJe wijziging staat nog op dit apparaat, maar is niet opgeslagen.';
+      try {
+        const kb = Math.round(new Blob([JSON.stringify(data)]).size / 1024);
+        if (kb > 900) msg = 'Opslaan mislukt: je gegevens zijn te groot geworden (' + kb + ' KB, max ongeveer 1024 KB).\n\nDit komt meestal door veel geuploade clublogo\'s of spelersfoto\'s. Verwijder een paar foto\'s of logo\'s en probeer het opnieuw.';
+      } catch(_) {}
+      alert(msg);
+    }
+  } finally {
+    saveInFlight = false;
   }
 }
 
 function save() {
   if (isViewingFriend) return;
+  localVersion++;
   clearTimeout(saveTimeout);
   saveTimeout = setTimeout(saveToFirebase, 500);
 }
