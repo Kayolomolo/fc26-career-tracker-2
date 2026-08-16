@@ -651,6 +651,10 @@ textarea { width: 100%; min-height: 60px; resize: vertical; }
         <div class="form-row" id="logo-preview-row" style="display:none"><label></label><div id="logo-preview" style="width:40px;height:40px;border-radius:50%;overflow:hidden;border:1px solid #1e2a3a"></div></div>
         <div class="form-row"><label>Kleur</label><input type="color" id="team-color" value="#0088ff"></div>
         <div class="form-row"><label></label><button class="btn btn-primary" onclick="addTeam()"><i class="fa-solid fa-plus"></i> Toevoegen</button></div>
+        <div class="form-row" style="border-top:1px solid #1e2a3a;padding-top:12px;margin-top:4px">
+          <label>Snel vullen</label>
+          <button class="btn btn-outline btn-sm" onclick="addEnglishTeams()"><i class="fa-solid fa-flag"></i> Alle Engelse clubs (Premier League t/m League Two)</button>
+        </div>
       </div>
       <div class="filter-row">
         <div class="search-wrap">
@@ -1448,6 +1452,60 @@ function renderStats(){if(!career){document.getElementById('stats-grid').innerHT
 function showAddPlayer(){if(!career||isViewingFriend)return;document.getElementById('pl-name').value='';document.getElementById('pl-rating').value='';document.getElementById('pl-photo').value='';showModal('player-modal');}
 function resizeImgAspect(file,targetW,targetH,cb){const reader=new FileReader();reader.onload=function(ev){const img=new Image();img.onload=function(){const c=document.createElement('canvas');c.width=targetW;c.height=targetH;const ctx=c.getContext('2d'),sc=Math.max(targetW/img.width,targetH/img.height),w=img.width*sc,h=img.height*sc;ctx.drawImage(img,(targetW-w)/2,(targetH-h)/2,w,h);cb(c.toDataURL('image/jpeg',0.75));};img.src=ev.target.result;};reader.readAsDataURL(file);}
 function resizeImg(file,cb){resizeImgAspect(file,96,96,cb);}
+
+// Engelse profclubs seizoen 25/26. Namen komen overeen met de al aanwezige
+// teams, zodat er niets dubbel wordt toegevoegd.
+const ENGLISH_TEAMS=[
+  // Premier League
+  {name:'Arsenal',color:'#EF0107'},{name:'Aston Villa',color:'#670E36'},{name:'Bournemouth',color:'#DA291C'},
+  {name:'Brentford',color:'#E30613'},{name:'Brighton',color:'#0057B8'},{name:'Burnley',color:'#6C1D45'},
+  {name:'Chelsea',color:'#034694'},{name:'Crystal Palace',color:'#1B458F'},{name:'Everton',color:'#003399'},
+  {name:'Fulham',color:'#1A1A1A'},{name:'Leeds United',color:'#1D428A'},{name:'Liverpool',color:'#C8102E'},
+  {name:'Man City',color:'#6CABDD'},{name:'Man United',color:'#DA291C'},{name:'Newcastle',color:'#241F20'},
+  {name:'Nottingham Forest',color:'#DD0000'},{name:'Sunderland',color:'#EB172B'},{name:'Tottenham',color:'#132257'},
+  {name:'West Ham',color:'#7A263A'},{name:'Wolverhampton',color:'#FDB913'},
+  // Championship
+  {name:'Birmingham City',color:'#223B94'},{name:'Blackburn Rovers',color:'#009EE0'},{name:'Bristol City',color:'#E21C38'},
+  {name:'Charlton Athletic',color:'#D4021D'},{name:'Coventry City',color:'#3B7DC4'},{name:'Derby County',color:'#1A1A1A'},
+  {name:'Hull City',color:'#D4820A'},{name:'Ipswich Town',color:'#0044AA'},{name:'Leicester City',color:'#003090'},
+  {name:'Middlesbrough',color:'#E21C38'},{name:'Millwall',color:'#001D5E'},{name:'Norwich City',color:'#00A650'},
+  {name:'Oxford United',color:'#002D62'},{name:'Portsmouth',color:'#001489'},{name:'Preston North End',color:'#1B1F63'},
+  {name:'Queens Park Rangers',color:'#1D5BA4'},{name:'Sheffield United',color:'#EE2737'},{name:'Sheffield Wednesday',color:'#1F5AA5'},
+  {name:'Southampton',color:'#D71920'},{name:'Stoke City',color:'#E03A3E'},{name:'Swansea City',color:'#121212'},
+  {name:'Watford',color:'#ED2127'},{name:'West Bromwich Albion',color:'#122F67'},{name:'Wrexham',color:'#D2001C'},
+  // League One
+  {name:'AFC Wimbledon',color:'#001F5B'},{name:'Barnsley',color:'#E4002B'},{name:'Blackpool',color:'#F68712'},
+  {name:'Bolton Wanderers',color:'#263C7E'},{name:'Bradford City',color:'#8A1538'},{name:'Burton Albion',color:'#1A1A1A'},
+  {name:'Cardiff City',color:'#0070B5'},{name:'Doncaster Rovers',color:'#D50032'},{name:'Exeter City',color:'#A2001D'},
+  {name:'Huddersfield Town',color:'#0E63AD'},{name:'Leyton Orient',color:'#D2202F'},{name:'Lincoln City',color:'#E31B23'},
+  {name:'Luton Town',color:'#F78F1E'},{name:'Mansfield Town',color:'#E8A400'},{name:'Northampton Town',color:'#722F37'},
+  {name:'Peterborough United',color:'#0057B8'},{name:'Plymouth Argyle',color:'#007B5F'},{name:'Port Vale',color:'#24252A'},
+  {name:'Reading',color:'#004494'},{name:'Rotherham United',color:'#DD1E2F'},{name:'Stevenage',color:'#C8102E'},
+  {name:'Stockport County',color:'#003DA5'},{name:'Wigan Athletic',color:'#1D6FB8'},{name:'Wycombe Wanderers',color:'#0C2340'},
+  // League Two
+  {name:'Accrington Stanley',color:'#E4002B'},{name:'Barnet',color:'#F5821F'},{name:'Barrow',color:'#003DA5'},
+  {name:'Bristol Rovers',color:'#0B4EA2'},{name:'Bromley',color:'#1A1A1A'},{name:'Cambridge United',color:'#D69A2D'},
+  {name:'Cheltenham Town',color:'#E2231A'},{name:'Chesterfield',color:'#003DA5'},{name:'Colchester United',color:'#0055A5'},
+  {name:'Crawley Town',color:'#E4002B'},{name:'Crewe Alexandra',color:'#E4002B'},{name:'Fleetwood Town',color:'#E4002B'},
+  {name:'Gillingham',color:'#003DA5'},{name:'Grimsby Town',color:'#1A1A1A'},{name:'Harrogate Town',color:'#1A1A1A'},
+  {name:'Milton Keynes Dons',color:'#003DA5'},{name:'Newport County',color:'#D4820A'},{name:'Notts County',color:'#1A1A1A'},
+  {name:'Oldham Athletic',color:'#003DA5'},{name:'Salford City',color:'#E4002B'},{name:'Shrewsbury Town',color:'#003DA5'},
+  {name:'Swindon Town',color:'#E4002B'},{name:'Tranmere Rovers',color:'#003DA5'},{name:'Walsall',color:'#E4002B'}
+];
+
+function addEnglishTeams(){
+  if(isViewingFriend)return;
+  if(!dataLoaded){alert('Je gegevens zijn niet geladen (verbindingsprobleem). Probeer het opnieuw met internet.');return;}
+  const missing=ENGLISH_TEAMS.filter(t=>!data.teams.some(x=>x.name===t.name));
+  if(!missing.length){alert('Alle Engelse clubs staan er al in.');return;}
+  if(!confirm(missing.length+' clubs toevoegen uit de Premier League, Championship, League One en League Two?\n\nZe krijgen de clubkleur met de beginletters als logo. Je kunt daarna per club zelf een echt logo uploaden.'))return;
+  missing.forEach(t=>data.teams.push({name:t.name,color:t.color,logo:''}));
+  save();
+  populateTeamSelects();
+  const q=document.getElementById('filter-team-manage'); if(q)q.value='';
+  renderTeams();
+  alert(missing.length+' clubs toegevoegd.');
+}
 
 function exportBackup(){
   if(!dataLoaded){alert('Je gegevens zijn niet geladen, er valt nu niets te back-uppen. Probeer het opnieuw met internet.');return;}
