@@ -662,6 +662,10 @@ textarea { width: 100%; min-height: 60px; resize: vertical; }
           </div>
         </div>
         <div class="form-row"><label></label><span style="font-size:11px;color:#666;flex:1">Voegt de clubs uit de hoogste twee divisies toe (Engeland: alle vier). Clubs die je al hebt worden overgeslagen.</span></div>
+        <div class="form-row" style="border-top:1px solid #1e2a3a;padding-top:12px;margin-top:4px">
+          <label>Opschonen</label>
+          <button class="btn btn-danger btn-sm" onclick="removeTeamsWithoutLogo()"><i class="fa-solid fa-broom"></i> Teams zonder logo verwijderen</button>
+        </div>
       </div>
       <div class="filter-row">
         <div class="search-wrap">
@@ -1572,6 +1576,124 @@ function addTeamPack(key){
   const q=document.getElementById('filter-team-manage'); if(q)q.value='';
   renderTeams();
   alert(missing.length+' clubs toegevoegd.');
+}
+
+function removeTeamsWithoutLogo(){
+  if(isViewingFriend)return;
+  if(!dataLoaded){alert('Je gegevens zijn niet geladen (verbindingsprobleem). Probeer het opnieuw met internet.');return;}
+  // Teams die je echt gebruikt worden beschermd, ook als ze geen logo hebben.
+  const inUse=new Set();
+  (data.careers||[]).forEach(c=>{
+    if(c.team)inUse.add(c.team);
+    (c.matches||[]).forEach(m=>{inUse.add(m.home);inUse.add(m.away);});
+  });
+  const hasLogo=t=>!!(t.logo&&String(t.logo).trim());
+  const removable=data.teams.filter(t=>!hasLogo(t)&&!inUse.has(t.name));
+  const protectedCount=data.teams.filter(t=>!hasLogo(t)&&inUse.has(t.name)).length;
+  if(!removable.length){
+    alert(protectedCount
+      ? 'Niets te verwijderen.\n\n'+protectedCount+' teams hebben geen logo, maar die blijven staan omdat je ze gebruikt in wedstrijden of als clubteam.'
+      : 'Alle teams hebben al een logo.');
+    return;
+  }
+  if(!confirm(removable.length+' teams zonder logo verwijderen?'+
+    (protectedCount?'\n\n'+protectedCount+' teams zonder logo blijven wel staan, omdat je ze gebruikt in wedstrijden of als clubteam.':'')+
+    '\n\nEr wordt eerst een kopie op dit apparaat gezet. Ging er iets mis? Dan kun je die terugzetten via de knop Back-up.'))return;
+  makeSeasonSnapshot('voor opschonen teams');
+  const namesToRemove=new Set(removable.map(t=>t.name));
+  data.teams=data.teams.filter(t=>!namesToRemove.has(t.name));
+  save();
+  populateTeamSelects();
+  const q=document.getElementById('filter-team-manage'); if(q)q.value='';
+  renderTeams();
+  alert(removable.length+' teams verwijderd.');
+}
+
+// ---- Seizoensback-up op het apparaat zelf ----
+// Wordt alleen gemaakt bij het starten van een nieuw seizoen. Afgelopen
+// seizoenen kun je nergens meer terugzoeken, het lopende seizoen wel.
+const SNAP_KEY='fc26_season_snapshot';
+
+function countMatches(d){
+  try{ return (d.careers||[]).reduce((n,c)=>n+((c.matches||[]).length),0); }catch(e){ return 0; }
+}
+function readSnapshot(){
+  try{ const raw=localStorage.getItem(SNAP_KEY); return raw?JSON.parse(raw):null; }catch(e){ return null; }
+}
+function stripPhotos(d){
+  const c=JSON.parse(JSON.stringify(d));
+  (c.teams||[]).forEach(t=>{if(t.logo&&t.logo.indexOf('data:')===0)t.logo='';});
+  (c.careers||[]).forEach(cr=>{
+    (cr.players||[]).forEach(p=>{p.photo='';});
+    if(cr.manager)cr.manager.photo='';
+  });
+  return c;
+}
+function makeSeasonSnapshot(reason){
+  if(!dataLoaded||isViewingFriend)return false;
+  const matches=countMatches(data);
+  const prev=readSnapshot();
+  // Veiligheid: een kleinere stand nooit over een grotere back-up heen schrijven.
+  if(prev&&typeof prev.matches==='number'&&matches<prev.matches){
+    console.warn('Seizoensback-up overgeslagen: minder wedstrijden dan de bestaande back-up.');
+    return false;
+  }
+  const payload={savedAt:new Date().toISOString(),reason:reason||'',matches,data};
+  try{
+    localStorage.setItem(SNAP_KEY,JSON.stringify(payload));
+    return true;
+  }catch(e){
+    // Te groot voor de browser: opnieuw zonder foto's (dat is verreweg het grootst).
+    try{
+      localStorage.setItem(SNAP_KEY,JSON.stringify({...payload,data:stripPhotos(data),photos:false}));
+      return true;
+    }catch(e2){ console.warn('Seizoensback-up past niet in de browseropslag.'); return false; }
+  }
+}
+function restoreSeasonSnapshot(){
+  if(isViewingFriend)return;
+  if(!dataLoaded){alert('Je gegevens zijn niet geladen. Probeer het opnieuw met internet.');return;}
+  const snap=readSnapshot();
+  if(!snap||!snap.data){alert('Er staat nog geen seizoensback-up op dit apparaat.\n\nDie wordt automatisch gemaakt zodra je een nieuw seizoen start.');return;}
+  const d=new Date(snap.savedAt);
+  const nu=countMatches(data);
+  if(!confirm('Back-up van '+d.toLocaleDateString('nl-NL')+' terugzetten?\n\nIn de back-up: '+snap.matches+' wedstrijden.\nNu in de app: '+nu+' wedstrijden.'+
+    (snap.photos===false?'\n\nLet op: in deze back-up zitten geen foto\'s/logo\'s (die pasten niet).':'')+
+    '\n\nAlles wat er nu in staat wordt hiermee vervangen.'))return;
+  data=JSON.parse(JSON.stringify(snap.data));
+  if(!data.teams||!data.teams.length)data.teams=defaultTeams;
+  if(!data.careers)data.careers=[];
+  career=data.activeCareerId?(data.careers.find(c=>c.id===data.activeCareerId)||null):null;
+  save();applyTheme();renderCareerBar();refreshAll();renderTeams();
+  alert('Back-up teruggezet.');
+}
+
+function showBackupModal(){
+  if(isViewingFriend)return;
+  const snap=readSnapshot();
+  let snapInfo;
+  if(snap&&snap.data){
+    const d=new Date(snap.savedAt);
+    snapInfo='<div style="font-size:13px;color:#ccc">Laatste seizoensback-up:<br><b>'+d.toLocaleDateString('nl-NL')+' '+d.toLocaleTimeString('nl-NL',{hour:'2-digit',minute:'2-digit'})+'</b> &middot; '+snap.matches+' wedstrijden'+
+      (snap.photos===false?'<br><span style="color:#FF9800;font-size:12px">zonder foto\'s (die pasten niet)</span>':'')+'</div>';
+  }else{
+    snapInfo='<div style="font-size:13px;color:#888">Nog geen seizoensback-up. Die wordt automatisch gemaakt zodra je een nieuw seizoen start.</div>';
+  }
+  const html='<div class="modal">'+
+    '<h3><i class="fa-solid fa-shield-halved"></i> Back-up</h3>'+
+    '<p style="font-size:13px;color:#888;margin-bottom:12px">Je gegevens staan online. Bij het starten van een nieuw seizoen bewaart de app ook automatisch een kopie op dit apparaat.</p>'+
+    '<div style="background:#0d1420;border:1px solid #1e2a3a;border-radius:8px;padding:12px;margin-bottom:14px">'+snapInfo+
+      '<div style="font-size:12px;color:#666;margin-top:8px">Nu in de app: '+countMatches(data)+' wedstrijden &middot; '+dataSizeKB()+' KB</div></div>'+
+    '<div style="display:flex;flex-direction:column;gap:8px">'+
+      '<button class="btn btn-primary" onclick="exportBackup()"><i class="fa-solid fa-download"></i> Back-upbestand downloaden</button>'+
+      '<button class="btn btn-outline" onclick="if(makeSeasonSnapshot(\'handmatig\')){closeModal(\'backup-modal\');alert(\'Back-up op dit apparaat bijgewerkt.\');}else{alert(\'Back-up niet bijgewerkt (er staat al een grotere back-up, of hij past niet).\');}"><i class="fa-solid fa-mobile-screen"></i> Nu een kopie op dit apparaat maken</button>'+
+      '<button class="btn btn-outline" onclick="closeModal(\'backup-modal\');restoreSeasonSnapshot()"><i class="fa-solid fa-rotate-left"></i> Back-up van dit apparaat terugzetten</button>'+
+    '</div>'+
+    '<div style="display:flex;justify-content:flex-end;margin-top:14px"><button class="btn btn-outline" onclick="closeModal(\'backup-modal\')">Sluiten</button></div>'+
+  '</div>';
+  let overlay=document.getElementById('backup-modal');
+  if(!overlay){overlay=document.createElement('div');overlay.id='backup-modal';overlay.className='modal-overlay';document.body.appendChild(overlay);}
+  overlay.innerHTML=html;overlay.classList.add('show');
 }
 
 function exportBackup(){
