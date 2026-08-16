@@ -319,6 +319,7 @@ textarea { width: 100%; min-height: 60px; resize: vertical; }
       <span>Ingelogd als <span class="user-name" id="display-name"></span></span>
       <button onclick="showMyCode()"><i class="fa-solid fa-key"></i> Mijn code</button>
       <button onclick="showImportModal()"><i class="fa-solid fa-file-import"></i> Importeren</button>
+      <button onclick="askOptimizeImages()"><i class="fa-solid fa-compress"></i> Opslag</button>
       <button onclick="doLogout()"><i class="fa-solid fa-right-from-bracket"></i> Uitloggen</button>
     </div>
     <div class="sync-status" id="sync-status"></div>
@@ -1040,12 +1041,14 @@ async function saveToFirebase() {
     // syncedVersion blijft achter, dus de live-sync overschrijft je wijziging niet.
     if (!saveErrorShown) {
       saveErrorShown = true;
-      let msg = 'Opslaan mislukt: ' + (e.message || e.code || 'onbekende fout') + '\n\nJe wijziging staat nog op dit apparaat, maar is niet opgeslagen.';
-      try {
-        const kb = Math.round(new Blob([JSON.stringify(data)]).size / 1024);
-        if (kb > 900) msg = 'Opslaan mislukt: je gegevens zijn te groot geworden (' + kb + ' KB, max ongeveer 1024 KB).\n\nDit komt meestal door veel geuploade clublogo\'s of spelersfoto\'s. Verwijder een paar foto\'s of logo\'s en probeer het opnieuw.';
-      } catch(_) {}
-      alert(msg);
+      const kb = dataSizeKB();
+      if (kb > 900) {
+        if (confirm('Opslaan mislukt: je gegevens zijn te groot geworden (' + kb + ' KB, max ongeveer 1024 KB).\n\nDit komt door geuploade clublogo\'s en spelersfoto\'s.\n\nZal ik ze nu automatisch kleiner maken? Je verliest geen teams, spelers of wedstrijden.')) {
+          setTimeout(optimizeAndSave, 0);
+        }
+      } else {
+        alert('Opslaan mislukt: ' + (e.message || e.code || 'onbekende fout') + '\n\nJe wijziging staat nog op dit apparaat, maar is niet opgeslagen.');
+      }
     }
   } finally {
     saveInFlight = false;
@@ -1432,7 +1435,66 @@ function renderStats(){if(!career){document.getElementById('stats-grid').innerHT
 
 function showAddPlayer(){if(!career||isViewingFriend)return;document.getElementById('pl-name').value='';document.getElementById('pl-rating').value='';document.getElementById('pl-photo').value='';showModal('player-modal');}
 function resizeImgAspect(file,targetW,targetH,cb){const reader=new FileReader();reader.onload=function(ev){const img=new Image();img.onload=function(){const c=document.createElement('canvas');c.width=targetW;c.height=targetH;const ctx=c.getContext('2d'),sc=Math.max(targetW/img.width,targetH/img.height),w=img.width*sc,h=img.height*sc;ctx.drawImage(img,(targetW-w)/2,(targetH-h)/2,w,h);cb(c.toDataURL('image/jpeg',0.75));};img.src=ev.target.result;};reader.readAsDataURL(file);}
-function resizeImg(file,cb){resizeImgAspect(file,128,128,cb);}
+function resizeImg(file,cb){resizeImgAspect(file,96,96,cb);}
+
+// ---- Opslagruimte: alles staat in 1 Firestore-document (limiet 1 MB) ----
+function dataSizeKB(){try{return Math.round(new Blob([JSON.stringify(data)]).size/1024);}catch(e){return 0;}}
+
+function reencodeDataUrl(src,maxDim,quality){
+  return new Promise(resolve=>{
+    if(typeof src!=='string'||src.indexOf('data:image')!==0){resolve(null);return;}
+    const img=new Image();
+    img.onload=function(){
+      const scale=Math.min(1,maxDim/Math.max(img.width,img.height));
+      const w=Math.max(1,Math.round(img.width*scale)),h=Math.max(1,Math.round(img.height*scale));
+      const c=document.createElement('canvas');c.width=w;c.height=h;
+      try{
+        c.getContext('2d').drawImage(img,0,0,w,h);
+        const out=c.toDataURL('image/jpeg',quality);
+        resolve(out&&out.length<src.length?out:null);
+      }catch(e){resolve(null);}
+    };
+    img.onerror=function(){resolve(null);};
+    img.src=src;
+  });
+}
+
+async function optimizeImages(maxDim,quality){
+  const before=dataSizeKB();
+  let count=0;
+  const jobs=[];
+  (data.teams||[]).forEach(t=>{
+    jobs.push(reencodeDataUrl(t.logo,maxDim,quality).then(v=>{if(v){t.logo=v;count++;}}));
+  });
+  (data.careers||[]).forEach(c=>{
+    (c.players||[]).forEach(p=>{
+      jobs.push(reencodeDataUrl(p.photo,maxDim,quality).then(v=>{if(v){p.photo=v;count++;}}));
+    });
+    if(c.manager&&c.manager.photo){
+      jobs.push(reencodeDataUrl(c.manager.photo,Math.round(maxDim*2.5),quality).then(v=>{if(v){c.manager.photo=v;count++;}}));
+    }
+  });
+  await Promise.all(jobs);
+  return {before,after:dataSizeKB(),count};
+}
+
+async function optimizeAndSave(){
+  setSyncStatus('Foto\'s verkleinen...');
+  const r=await optimizeImages(96,0.55);
+  localVersion++;
+  clearTimeout(saveTimeout);
+  await saveToFirebase();
+  refreshAll();renderTeams();
+  alert('Klaar! '+r.count+' foto\'s verkleind.\nVan '+r.before+' KB naar '+r.after+' KB.'+
+    (r.after>900?'\n\nLet op: nog steeds vrij groot. Verwijder eventueel een paar logo\'s of spelersfoto\'s die je niet gebruikt.':''));
+}
+
+async function askOptimizeImages(){
+  if(isViewingFriend)return;
+  const kb=dataSizeKB();
+  if(!confirm('Je gegevens zijn nu '+kb+' KB (limiet ongeveer 1024 KB).\n\nWil je alle clublogo\'s en spelersfoto\'s automatisch kleiner maken?\n\nJe verliest geen teams, spelers, wedstrijden of statistieken - alleen de foto\'s worden iets minder scherp.'))return;
+  await optimizeAndSave();
+}
 function savePlayer(){if(!career||isViewingFriend)return;const name=document.getElementById('pl-name').value.trim();if(!name)return alert('Vul een naam in');const position=document.getElementById('pl-position').value;const rating=parseInt(document.getElementById('pl-rating').value)||70;const starter=document.getElementById('pl-starter').value==='1';const file=document.getElementById('pl-photo').files[0];function finish(photo){const p={id:'p'+Date.now(),name,position,rating,starter,photo:photo||''};career.players.push(p);if(!career.ratings)career.ratings={};if(!career.ratings[p.id])career.ratings[p.id]=[];if(career.seasons.length)career.ratings[p.id].push({season:career.seasons[0],rating});save();closeModal('player-modal');const bq=document.getElementById('filter-bench');if(bq)bq.value='';renderFormation();populatePlayers();}if(file)resizeImg(file,finish);else finish('');}
 function deletePlayer(id){if(!career||isViewingFriend||!confirm('Speler verwijderen?'))return;career.players=career.players.filter(p=>p.id!==id);if(career.ratings)delete career.ratings[id];save();renderFormation();populatePlayers();}
 function changePlayerPhoto(id){if(isViewingFriend)return;const input=document.createElement('input');input.type='file';input.accept='image/*';input.onchange=function(e){const file=e.target.files[0];if(!file)return;resizeImg(file,function(d){const p=career.players.find(x=>x.id===id);if(p){p.photo=d;save();renderFormation();}});};input.click();}
@@ -1548,7 +1610,7 @@ function saveManager(){
     renderManager();
   }
   if(file){
-    if(style==='rect')resizeImgAspect(file,240,320,finish);
+    if(style==='rect')resizeImgAspect(file,180,240,finish);
     else resizeImg(file,finish);
   }else{
     finish('');
