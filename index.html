@@ -651,10 +651,17 @@ textarea { width: 100%; min-height: 60px; resize: vertical; }
         <div class="form-row" id="logo-preview-row" style="display:none"><label></label><div id="logo-preview" style="width:40px;height:40px;border-radius:50%;overflow:hidden;border:1px solid #1e2a3a"></div></div>
         <div class="form-row"><label>Kleur</label><input type="color" id="team-color" value="#0088ff"></div>
         <div class="form-row"><label></label><button class="btn btn-primary" onclick="addTeam()"><i class="fa-solid fa-plus"></i> Toevoegen</button></div>
-        <div class="form-row" style="border-top:1px solid #1e2a3a;padding-top:12px;margin-top:4px">
+        <div class="form-row" style="border-top:1px solid #1e2a3a;padding-top:12px;margin-top:4px;align-items:flex-start">
           <label>Snel vullen</label>
-          <button class="btn btn-outline btn-sm" onclick="addEnglishTeams()"><i class="fa-solid fa-flag"></i> Alle Engelse clubs (Premier League t/m League Two)</button>
+          <div style="display:flex;flex-wrap:wrap;gap:6px;flex:1">
+            <button class="btn btn-outline btn-sm" onclick="addTeamPack('en')">Engeland</button>
+            <button class="btn btn-outline btn-sm" onclick="addTeamPack('es')">Spanje</button>
+            <button class="btn btn-outline btn-sm" onclick="addTeamPack('de')">Duitsland</button>
+            <button class="btn btn-outline btn-sm" onclick="addTeamPack('fr')">Frankrijk</button>
+            <button class="btn btn-outline btn-sm" onclick="addTeamPack('it')">Italië</button>
+          </div>
         </div>
+        <div class="form-row"><label></label><span style="font-size:11px;color:#666;flex:1">Voegt de clubs uit de hoogste twee divisies toe (Engeland: alle vier). Clubs die je al hebt worden overgeslagen.</span></div>
       </div>
       <div class="filter-row">
         <div class="search-wrap">
@@ -1453,10 +1460,10 @@ function showAddPlayer(){if(!career||isViewingFriend)return;document.getElementB
 function resizeImgAspect(file,targetW,targetH,cb){const reader=new FileReader();reader.onload=function(ev){const img=new Image();img.onload=function(){const c=document.createElement('canvas');c.width=targetW;c.height=targetH;const ctx=c.getContext('2d'),sc=Math.max(targetW/img.width,targetH/img.height),w=img.width*sc,h=img.height*sc;ctx.drawImage(img,(targetW-w)/2,(targetH-h)/2,w,h);cb(c.toDataURL('image/jpeg',0.75));};img.src=ev.target.result;};reader.readAsDataURL(file);}
 function resizeImg(file,cb){resizeImgAspect(file,96,96,cb);}
 
-// Engelse profclubs seizoen 25/26. Namen komen overeen met de al aanwezige
+// Clubs per land, seizoen 25/26. Namen komen overeen met de al aanwezige
 // teams, zodat er niets dubbel wordt toegevoegd.
-const ENGLISH_TEAMS=[
-  // Premier League
+const TEAM_PACKS={
+ en:{label:'Engeland (Premier League t/m League Two)',teams:[
   {name:'Arsenal',color:'#EF0107'},{name:'Aston Villa',color:'#670E36'},{name:'Bournemouth',color:'#DA291C'},
   {name:'Brentford',color:'#E30613'},{name:'Brighton',color:'#0057B8'},{name:'Burnley',color:'#6C1D45'},
   {name:'Chelsea',color:'#034694'},{name:'Crystal Palace',color:'#1B458F'},{name:'Everton',color:'#003399'},
@@ -1464,7 +1471,6 @@ const ENGLISH_TEAMS=[
   {name:'Man City',color:'#6CABDD'},{name:'Man United',color:'#DA291C'},{name:'Newcastle',color:'#241F20'},
   {name:'Nottingham Forest',color:'#DD0000'},{name:'Sunderland',color:'#EB172B'},{name:'Tottenham',color:'#132257'},
   {name:'West Ham',color:'#7A263A'},{name:'Wolverhampton',color:'#FDB913'},
-  // Championship
   {name:'Birmingham City',color:'#223B94'},{name:'Blackburn Rovers',color:'#009EE0'},{name:'Bristol City',color:'#E21C38'},
   {name:'Charlton Athletic',color:'#D4021D'},{name:'Coventry City',color:'#3B7DC4'},{name:'Derby County',color:'#1A1A1A'},
   {name:'Hull City',color:'#D4820A'},{name:'Ipswich Town',color:'#0044AA'},{name:'Leicester City',color:'#003090'},
@@ -1473,7 +1479,6 @@ const ENGLISH_TEAMS=[
   {name:'Queens Park Rangers',color:'#1D5BA4'},{name:'Sheffield United',color:'#EE2737'},{name:'Sheffield Wednesday',color:'#1F5AA5'},
   {name:'Southampton',color:'#D71920'},{name:'Stoke City',color:'#E03A3E'},{name:'Swansea City',color:'#121212'},
   {name:'Watford',color:'#ED2127'},{name:'West Bromwich Albion',color:'#122F67'},{name:'Wrexham',color:'#D2001C'},
-  // League One
   {name:'AFC Wimbledon',color:'#001F5B'},{name:'Barnsley',color:'#E4002B'},{name:'Blackpool',color:'#F68712'},
   {name:'Bolton Wanderers',color:'#263C7E'},{name:'Bradford City',color:'#8A1538'},{name:'Burton Albion',color:'#1A1A1A'},
   {name:'Cardiff City',color:'#0070B5'},{name:'Doncaster Rovers',color:'#D50032'},{name:'Exeter City',color:'#A2001D'},
@@ -1482,7 +1487,6 @@ const ENGLISH_TEAMS=[
   {name:'Peterborough United',color:'#0057B8'},{name:'Plymouth Argyle',color:'#007B5F'},{name:'Port Vale',color:'#24252A'},
   {name:'Reading',color:'#004494'},{name:'Rotherham United',color:'#DD1E2F'},{name:'Stevenage',color:'#C8102E'},
   {name:'Stockport County',color:'#003DA5'},{name:'Wigan Athletic',color:'#1D6FB8'},{name:'Wycombe Wanderers',color:'#0C2340'},
-  // League Two
   {name:'Accrington Stanley',color:'#E4002B'},{name:'Barnet',color:'#F5821F'},{name:'Barrow',color:'#003DA5'},
   {name:'Bristol Rovers',color:'#0B4EA2'},{name:'Bromley',color:'#1A1A1A'},{name:'Cambridge United',color:'#D69A2D'},
   {name:'Cheltenham Town',color:'#E2231A'},{name:'Chesterfield',color:'#003DA5'},{name:'Colchester United',color:'#0055A5'},
@@ -1491,107 +1495,83 @@ const ENGLISH_TEAMS=[
   {name:'Milton Keynes Dons',color:'#003DA5'},{name:'Newport County',color:'#D4820A'},{name:'Notts County',color:'#1A1A1A'},
   {name:'Oldham Athletic',color:'#003DA5'},{name:'Salford City',color:'#E4002B'},{name:'Shrewsbury Town',color:'#003DA5'},
   {name:'Swindon Town',color:'#E4002B'},{name:'Tranmere Rovers',color:'#003DA5'},{name:'Walsall',color:'#E4002B'}
-];
+ ]},
+ es:{label:'Spanje (La Liga & Segunda Division)',teams:[
+  {name:'Alaves',color:'#0761AF'},{name:'Athletic Club',color:'#EE2523'},{name:'Atlético Madrid',color:'#CB3524'},
+  {name:'FC Barcelona',color:'#A50044'},{name:'Celta Vigo',color:'#4A9FE0'},{name:'Elche',color:'#00913F'},
+  {name:'Espanyol',color:'#007FC8'},{name:'Getafe',color:'#005999'},{name:'Girona',color:'#D6001C'},
+  {name:'Levante',color:'#0B4EA2'},{name:'Mallorca',color:'#E20613'},{name:'Osasuna',color:'#D91A21'},
+  {name:'Rayo Vallecano',color:'#E53027'},{name:'Real Betis',color:'#00954C'},{name:'Real Madrid',color:'#FEBE10'},
+  {name:'Real Oviedo',color:'#0B4EA2'},{name:'Real Sociedad',color:'#003DA5'},{name:'Sevilla',color:'#F43333'},
+  {name:'Valencia',color:'#F18E00'},{name:'Villarreal',color:'#FFE114'},
+  {name:'Albacete',color:'#2B2B2B'},{name:'Almeria',color:'#E30613'},{name:'FC Andorra',color:'#003DA5'},
+  {name:'Burgos CF',color:'#0B4EA2'},{name:'Cadiz',color:'#D6B800'},{name:'Castellon',color:'#1A1A1A'},
+  {name:'AD Ceuta',color:'#003DA5'},{name:'Cordoba',color:'#00843D'},{name:'Cultural Leonesa',color:'#CE1126'},
+  {name:'Deportivo La Coruna',color:'#009FE3'},{name:'Eibar',color:'#0B4EA2'},{name:'Granada',color:'#C8102E'},
+  {name:'Huesca',color:'#0B4EA2'},{name:'Las Palmas',color:'#E0B900'},{name:'Leganes',color:'#004B87'},
+  {name:'Malaga',color:'#0B4EA2'},{name:'Mirandes',color:'#E30613'},{name:'Racing Santander',color:'#009B3A'},
+  {name:'Real Sociedad B',color:'#003DA5'},{name:'Sporting Gijon',color:'#E30613'},{name:'Real Valladolid',color:'#7B2280'},
+  {name:'Real Zaragoza',color:'#005BAC'}
+ ]},
+ de:{label:'Duitsland (Bundesliga & 2. Bundesliga)',teams:[
+  {name:'Augsburg',color:'#BA3733'},{name:'Bayer Leverkusen',color:'#E32221'},{name:'Bayern München',color:'#DC052D'},
+  {name:'Borussia Dortmund',color:'#FDE100'},{name:'Borussia Mönchengladbach',color:'#00A94F'},{name:'Eintracht Frankfurt',color:'#E1000F'},
+  {name:'FC Köln',color:'#E32219'},{name:'Freiburg',color:'#E2001A'},{name:'Hamburger SV',color:'#0A5EB0'},
+  {name:'Heidenheim',color:'#E30613'},{name:'Hoffenheim',color:'#1961B5'},{name:'Mainz 05',color:'#C3141E'},
+  {name:'RB Leipzig',color:'#DD0741'},{name:'St. Pauli',color:'#6B3F27'},{name:'Stuttgart',color:'#E32219'},
+  {name:'Union Berlin',color:'#E3261C'},{name:'Werder Bremen',color:'#1D9053'},{name:'Wolfsburg',color:'#65B32E'},
+  {name:'Arminia Bielefeld',color:'#00437B'},{name:'Bochum',color:'#005CA9'},{name:'Braunschweig',color:'#D6B000'},
+  {name:'Darmstadt 98',color:'#004E9E'},{name:'Dynamo Dresden',color:'#1A1A1A'},{name:'Elversberg',color:'#E30613'},
+  {name:'Fortuna Düsseldorf',color:'#E2001A'},{name:'Greuther Fürth',color:'#007A3D'},{name:'Hannover 96',color:'#E30613'},
+  {name:'Hertha BSC',color:'#005CA9'},{name:'Holstein Kiel',color:'#005CA9'},{name:'Kaiserslautern',color:'#E2001A'},
+  {name:'Karlsruher SC',color:'#0B4EA2'},{name:'Magdeburg',color:'#005CA9'},{name:'Nürnberg',color:'#AD1220'},
+  {name:'Paderborn',color:'#005CA9'},{name:'Preußen Münster',color:'#007A3D'},{name:'Schalke 04',color:'#004D9D'}
+ ]},
+ fr:{label:'Frankrijk (Ligue 1 & Ligue 2)',teams:[
+  {name:'Angers',color:'#1A1A1A'},{name:'Auxerre',color:'#0B4EA2'},{name:'Brest',color:'#E30613'},
+  {name:'Le Havre',color:'#0B4EA2'},{name:'Lens',color:'#E30613'},{name:'Lille',color:'#E30613'},
+  {name:'Lorient',color:'#E77E00'},{name:'Lyon',color:'#003DA5'},{name:'Marseille',color:'#2FAEE0'},
+  {name:'Metz',color:'#7A0026'},{name:'Monaco',color:'#E30613'},{name:'Nantes',color:'#D6A400'},
+  {name:'Nice',color:'#E30613'},{name:'Paris FC',color:'#0B4EA2'},{name:'Paris SG',color:'#004170'},
+  {name:'Rennes',color:'#E30613'},{name:'Strasbourg',color:'#0B4EA2'},{name:'Toulouse',color:'#7B2280'},
+  {name:'Amiens',color:'#0B4EA2'},{name:'Annecy',color:'#E30613'},{name:'Bastia',color:'#0B4EA2'},
+  {name:'Boulogne',color:'#E30613'},{name:'Clermont Foot',color:'#C8102E'},{name:'Dunkerque',color:'#0B4EA2'},
+  {name:'Grenoble',color:'#0B4EA2'},{name:'Guingamp',color:'#E30613'},{name:'Laval',color:'#E77E00'},
+  {name:'Le Mans',color:'#E30613'},{name:'Montpellier',color:'#0B4EA2'},{name:'Nancy',color:'#E30613'},
+  {name:'Pau FC',color:'#0B4EA2'},{name:'Red Star',color:'#007A3D'},{name:'Reims',color:'#E30613'},
+  {name:'Rodez',color:'#E30613'},{name:'Saint-Étienne',color:'#007A3D'},{name:'Troyes',color:'#0B4EA2'}
+ ]},
+ it:{label:'Italie (Serie A & Serie B)',teams:[
+  {name:'Atalanta',color:'#1B5497'},{name:'Bologna',color:'#A21C25'},{name:'Cagliari',color:'#A2001D'},
+  {name:'Como',color:'#0B4EA2'},{name:'Cremonese',color:'#E30613'},{name:'Fiorentina',color:'#6E2C91'},
+  {name:'Genoa',color:'#A21C25'},{name:'Hellas Verona',color:'#1B3F8B'},{name:'Inter Milan',color:'#010E80'},
+  {name:'Juventus',color:'#000000'},{name:'Lazio',color:'#87D8F7'},{name:'Lecce',color:'#E30613'},
+  {name:'AC Milan',color:'#FB090B'},{name:'Napoli',color:'#004A8D'},{name:'Parma',color:'#1B3F8B'},
+  {name:'Pisa',color:'#0B4EA2'},{name:'AS Roma',color:'#8E1F2F'},{name:'Sassuolo',color:'#00A551'},
+  {name:'Torino',color:'#7A0026'},{name:'Udinese',color:'#1A1A1A'},
+  {name:'Avellino',color:'#007A3D'},{name:'Bari',color:'#E30613'},{name:'Carrarese',color:'#0B4EA2'},
+  {name:'Catanzaro',color:'#E30613'},{name:'Cesena',color:'#1A1A1A'},{name:'Empoli',color:'#0B4EA2'},
+  {name:'Virtus Entella',color:'#0B4EA2'},{name:'Frosinone',color:'#0B4EA2'},{name:'Juve Stabia',color:'#D6A400'},
+  {name:'Mantova',color:'#E30613'},{name:'Modena',color:'#1B3F8B'},{name:'Monza',color:'#E30613'},
+  {name:'Padova',color:'#E30613'},{name:'Palermo',color:'#D6336C'},{name:'Pescara',color:'#0B4EA2'},
+  {name:'Reggiana',color:'#E30613'},{name:'Sampdoria',color:'#0B4EA2'},{name:'Spezia',color:'#1A1A1A'},
+  {name:'Südtirol',color:'#E30613'},{name:'Venezia',color:'#007A3D'}
+ ]}
+};
 
-function addEnglishTeams(){
-  if(isViewingFriend)return;
+function addTeamPack(key){
+  const pack=TEAM_PACKS[key];
+  if(!pack||isViewingFriend)return;
   if(!dataLoaded){alert('Je gegevens zijn niet geladen (verbindingsprobleem). Probeer het opnieuw met internet.');return;}
-  const missing=ENGLISH_TEAMS.filter(t=>!data.teams.some(x=>x.name===t.name));
-  if(!missing.length){alert('Alle Engelse clubs staan er al in.');return;}
-  if(!confirm(missing.length+' clubs toevoegen uit de Premier League, Championship, League One en League Two?\n\nZe krijgen de clubkleur met de beginletters als logo. Je kunt daarna per club zelf een echt logo uploaden.'))return;
+  const missing=pack.teams.filter(t=>!data.teams.some(x=>x.name===t.name));
+  if(!missing.length){alert('Alle clubs uit '+pack.label+' staan er al in.');return;}
+  if(!confirm(missing.length+' clubs toevoegen uit '+pack.label+'?\n\nZe krijgen de clubkleur met de beginletters als logo. Je kunt daarna per club zelf een echt logo uploaden.'))return;
   missing.forEach(t=>data.teams.push({name:t.name,color:t.color,logo:''}));
   save();
   populateTeamSelects();
   const q=document.getElementById('filter-team-manage'); if(q)q.value='';
   renderTeams();
   alert(missing.length+' clubs toegevoegd.');
-}
-
-// ---- Seizoensback-up op het apparaat zelf ----
-// Wordt alleen gemaakt bij het starten van een nieuw seizoen. Afgelopen
-// seizoenen kun je nergens meer terugzoeken, het lopende seizoen wel.
-const SNAP_KEY='fc26_season_snapshot';
-
-function countMatches(d){
-  try{ return (d.careers||[]).reduce((n,c)=>n+((c.matches||[]).length),0); }catch(e){ return 0; }
-}
-function readSnapshot(){
-  try{ const raw=localStorage.getItem(SNAP_KEY); return raw?JSON.parse(raw):null; }catch(e){ return null; }
-}
-function stripPhotos(d){
-  const c=JSON.parse(JSON.stringify(d));
-  (c.teams||[]).forEach(t=>{if(t.logo&&t.logo.indexOf('data:')===0)t.logo='';});
-  (c.careers||[]).forEach(cr=>{
-    (cr.players||[]).forEach(p=>{p.photo='';});
-    if(cr.manager)cr.manager.photo='';
-  });
-  return c;
-}
-function makeSeasonSnapshot(reason){
-  if(!dataLoaded||isViewingFriend)return false;
-  const matches=countMatches(data);
-  const prev=readSnapshot();
-  // Veiligheid: een kleinere stand nooit over een grotere back-up heen schrijven.
-  if(prev&&typeof prev.matches==='number'&&matches<prev.matches){
-    console.warn('Seizoensback-up overgeslagen: minder wedstrijden dan de bestaande back-up.');
-    return false;
-  }
-  const payload={savedAt:new Date().toISOString(),reason:reason||'',matches,data};
-  try{
-    localStorage.setItem(SNAP_KEY,JSON.stringify(payload));
-    return true;
-  }catch(e){
-    // Te groot voor de browser: opnieuw zonder foto's (dat is verreweg het grootst).
-    try{
-      localStorage.setItem(SNAP_KEY,JSON.stringify({...payload,data:stripPhotos(data),photos:false}));
-      return true;
-    }catch(e2){ console.warn('Seizoensback-up past niet in de browseropslag.'); return false; }
-  }
-}
-function restoreSeasonSnapshot(){
-  if(isViewingFriend)return;
-  if(!dataLoaded){alert('Je gegevens zijn niet geladen. Probeer het opnieuw met internet.');return;}
-  const snap=readSnapshot();
-  if(!snap||!snap.data){alert('Er staat nog geen seizoensback-up op dit apparaat.\n\nDie wordt automatisch gemaakt zodra je een nieuw seizoen start.');return;}
-  const d=new Date(snap.savedAt);
-  const nu=countMatches(data);
-  if(!confirm('Back-up van '+d.toLocaleDateString('nl-NL')+' terugzetten?\n\nIn de back-up: '+snap.matches+' wedstrijden.\nNu in de app: '+nu+' wedstrijden.'+
-    (snap.photos===false?'\n\nLet op: in deze back-up zitten geen foto\'s/logo\'s (die pasten niet).':'')+
-    '\n\nAlles wat er nu in staat wordt hiermee vervangen.'))return;
-  data=JSON.parse(JSON.stringify(snap.data));
-  if(!data.teams||!data.teams.length)data.teams=defaultTeams;
-  if(!data.careers)data.careers=[];
-  career=data.activeCareerId?(data.careers.find(c=>c.id===data.activeCareerId)||null):null;
-  save();applyTheme();renderCareerBar();refreshAll();renderTeams();
-  alert('Back-up teruggezet.');
-}
-
-function showBackupModal(){
-  if(isViewingFriend)return;
-  const snap=readSnapshot();
-  let snapInfo;
-  if(snap&&snap.data){
-    const d=new Date(snap.savedAt);
-    snapInfo='<div style="font-size:13px;color:#ccc">Laatste seizoensback-up:<br><b>'+d.toLocaleDateString('nl-NL')+' '+d.toLocaleTimeString('nl-NL',{hour:'2-digit',minute:'2-digit'})+'</b> &middot; '+snap.matches+' wedstrijden'+
-      (snap.photos===false?'<br><span style="color:#FF9800;font-size:12px">zonder foto\'s (die pasten niet)</span>':'')+'</div>';
-  }else{
-    snapInfo='<div style="font-size:13px;color:#888">Nog geen seizoensback-up. Die wordt automatisch gemaakt zodra je een nieuw seizoen start.</div>';
-  }
-  const html='<div class="modal">'+
-    '<h3><i class="fa-solid fa-shield-halved"></i> Back-up</h3>'+
-    '<p style="font-size:13px;color:#888;margin-bottom:12px">Je gegevens staan online. Bij het starten van een nieuw seizoen bewaart de app ook automatisch een kopie op dit apparaat.</p>'+
-    '<div style="background:#0d1420;border:1px solid #1e2a3a;border-radius:8px;padding:12px;margin-bottom:14px">'+snapInfo+
-      '<div style="font-size:12px;color:#666;margin-top:8px">Nu in de app: '+countMatches(data)+' wedstrijden &middot; '+dataSizeKB()+' KB</div></div>'+
-    '<div style="display:flex;flex-direction:column;gap:8px">'+
-      '<button class="btn btn-primary" onclick="exportBackup()"><i class="fa-solid fa-download"></i> Back-upbestand downloaden</button>'+
-      '<button class="btn btn-outline" onclick="if(makeSeasonSnapshot(\'handmatig\')){closeModal(\'backup-modal\');alert(\'Back-up op dit apparaat bijgewerkt.\');}else{alert(\'Back-up niet bijgewerkt (er staat al een grotere back-up, of hij past niet).\');}"><i class="fa-solid fa-mobile-screen"></i> Nu een kopie op dit apparaat maken</button>'+
-      '<button class="btn btn-outline" onclick="closeModal(\'backup-modal\');restoreSeasonSnapshot()"><i class="fa-solid fa-rotate-left"></i> Back-up van dit apparaat terugzetten</button>'+
-    '</div>'+
-    '<div style="display:flex;justify-content:flex-end;margin-top:14px"><button class="btn btn-outline" onclick="closeModal(\'backup-modal\')">Sluiten</button></div>'+
-  '</div>';
-  let overlay=document.getElementById('backup-modal');
-  if(!overlay){overlay=document.createElement('div');overlay.id='backup-modal';overlay.className='modal-overlay';document.body.appendChild(overlay);}
-  overlay.innerHTML=html;overlay.classList.add('show');
 }
 
 function exportBackup(){
