@@ -320,6 +320,7 @@ textarea { width: 100%; min-height: 60px; resize: vertical; }
       <button onclick="showMyCode()"><i class="fa-solid fa-key"></i> Mijn code</button>
       <button onclick="showImportModal()"><i class="fa-solid fa-file-import"></i> Importeren</button>
       <button onclick="askOptimizeImages()"><i class="fa-solid fa-compress"></i> Opslag</button>
+      <button onclick="exportBackup()"><i class="fa-solid fa-download"></i> Back-up</button>
       <button onclick="doLogout()"><i class="fa-solid fa-right-from-bracket"></i> Uitloggen</button>
     </div>
     <div class="sync-status" id="sync-status"></div>
@@ -893,6 +894,10 @@ let localVersion = 0;   // opgehoogd bij elke lokale wijziging
 let syncedVersion = 0;  // laatst succesvol opgeslagen versie
 let saveInFlight = false;
 let saveErrorShown = false;
+// VEILIGHEID: pas opslaan als we de gegevens echt van de server geladen hebben.
+// Zonder deze controle kan een mislukte laadpoging (geen internet) de lege
+// beginstand naar de server schrijven en zo alles overschrijven.
+let dataLoaded = false;
 
 async function loadUserData(uid, name) {
   currentUserId = uid;
@@ -908,15 +913,20 @@ async function loadUserData(uid, name) {
       data = doc.data();
       if (!data.teams || !data.teams.length) data.teams = defaultTeams;
       if (!data.careers) data.careers = [];
+      dataLoaded = true;
     } else {
       data = { teams: defaultTeams, careers: [], activeCareerId: null };
+      dataLoaded = true;
       await saveToFirebase();
     }
     setSyncStatus('Gesynchroniseerd');
   } catch(e) {
     console.error('Firestore error:', e);
+    // Laden mislukt: NIET opslaan, anders overschrijven we de server met een lege stand.
+    dataLoaded = false;
     data = { teams: defaultTeams, careers: [], activeCareerId: null };
-    setSyncStatus('Offline modus - kon niet verbinden');
+    setSyncStatus('Kon gegevens niet laden - er wordt niets opgeslagen');
+    alert('Kon je gegevens niet laden (verbindingsprobleem).\n\nJe careers worden nu niet getoond, maar er is niets verwijderd. Er wordt met opzet niets opgeslagen zolang dit probleem er is, zodat je gegevens veilig blijven.\n\nSluit de app en probeer het opnieuw met een goede internetverbinding.');
   }
 
   if (data.activeCareerId) career = data.careers.find(c => c.id === data.activeCareerId) || null;
@@ -1025,6 +1035,8 @@ auth.onAuthStateChanged(async user => {
 
 async function saveToFirebase() {
   if (!currentUserId || isViewingFriend) return;
+  // Nooit schrijven als het laden mislukt is: dat zou alles op de server wissen.
+  if (!dataLoaded) { setSyncStatus('Niet opgeslagen - gegevens zijn niet geladen'); return; }
   // Nooit twee schrijfacties tegelijk: even wachten en opnieuw proberen.
   if (saveInFlight) { clearTimeout(saveTimeout); saveTimeout = setTimeout(saveToFirebase, 300); return; }
   const version = localVersion;
@@ -1437,6 +1449,19 @@ function showAddPlayer(){if(!career||isViewingFriend)return;document.getElementB
 function resizeImgAspect(file,targetW,targetH,cb){const reader=new FileReader();reader.onload=function(ev){const img=new Image();img.onload=function(){const c=document.createElement('canvas');c.width=targetW;c.height=targetH;const ctx=c.getContext('2d'),sc=Math.max(targetW/img.width,targetH/img.height),w=img.width*sc,h=img.height*sc;ctx.drawImage(img,(targetW-w)/2,(targetH-h)/2,w,h);cb(c.toDataURL('image/jpeg',0.75));};img.src=ev.target.result;};reader.readAsDataURL(file);}
 function resizeImg(file,cb){resizeImgAspect(file,96,96,cb);}
 
+function exportBackup(){
+  if(!dataLoaded){alert('Je gegevens zijn niet geladen, er valt nu niets te back-uppen. Probeer het opnieuw met internet.');return;}
+  try{
+    const blob=new Blob([JSON.stringify(data)],{type:'application/json'});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a');
+    a.href=url;
+    a.download='fc26-backup-'+new Date().toISOString().slice(0,10)+'.json';
+    document.body.appendChild(a);a.click();a.remove();
+    setTimeout(()=>URL.revokeObjectURL(url),2000);
+  }catch(e){alert('Back-up maken mislukt: '+(e.message||e));}
+}
+
 // ---- Opslagruimte: alles staat in 1 Firestore-document (limiet 1 MB) ----
 function dataSizeKB(){try{return Math.round(new Blob([JSON.stringify(data)]).size/1024);}catch(e){return 0;}}
 
@@ -1491,6 +1516,7 @@ async function optimizeAndSave(){
 
 async function askOptimizeImages(){
   if(isViewingFriend)return;
+  if(!dataLoaded){alert('Je gegevens zijn niet geladen (verbindingsprobleem). Er wordt nu met opzet niets opgeslagen. Sluit de app en probeer het opnieuw met internet.');return;}
   const kb=dataSizeKB();
   if(!confirm('Je gegevens zijn nu '+kb+' KB (limiet ongeveer 1024 KB).\n\nWil je alle clublogo\'s en spelersfoto\'s automatisch kleiner maken?\n\nJe verliest geen teams, spelers, wedstrijden of statistieken - alleen de foto\'s worden iets minder scherp.'))return;
   await optimizeAndSave();
