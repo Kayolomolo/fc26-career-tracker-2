@@ -1655,59 +1655,71 @@ function makeSeasonSnapshot(reason,opts){
   }
 }
 
-function manualSnapshot(){
-  let r=makeSeasonSnapshot('handmatig');
-  if(!r.ok&&r.why==='smaller'){
-    if(!confirm('Let op: in de back-up op dit apparaat staan '+r.prevMatches+' wedstrijden, en nu heb je er '+r.matches+'.\n\nDat kan kloppen als je bewust dingen hebt opgeruimd of verwijderd.\n\nWil je de back-up vervangen door de stand van nu?'))return;
-    r=makeSeasonSnapshot('handmatig',{force:true});
-  }
+function manualSnapshot(force){
+  const r=makeSeasonSnapshot('handmatig',{force:!!force});
   if(r.ok){
-    closeModal('backup-modal');
-    alert('Back-up op dit apparaat bijgewerkt.'+(r.photos===false?'\n\nLet op: zonder foto\'s, want met foto\'s paste hij niet in de opslag van je browser.':''));
+    const t=new Date().toLocaleTimeString('nl-NL',{hour:'2-digit',minute:'2-digit'});
+    showBackupModal({type:'ok',text:'Kopie gemaakt om '+t+'.'+(r.photos===false?' Zonder foto\'s, want met foto\'s paste hij niet in de opslag van je browser.':'')});
+  }else if(r.why==='smaller'){
+    showBackupModal({type:'warn',force:true,
+      text:'In de back-up staan '+r.prevMatches+' wedstrijden en nu heb je er '+r.matches+'. Dat klopt als je bewust dingen hebt opgeruimd.'});
   }else if(r.why==='quota'){
-    alert('De back-up past niet in de opslag van je browser, ook niet zonder foto\'s.\n\nGebruik "Back-upbestand downloaden" om toch een kopie te bewaren.');
+    showBackupModal({type:'err',text:'Past niet in de opslag van je browser, ook niet zonder foto\'s. Gebruik hieronder "Back-upbestand downloaden".'});
   }else{
-    alert('Je gegevens zijn niet geladen. Probeer het opnieuw met internet.');
+    showBackupModal({type:'err',text:'Je gegevens zijn niet geladen. Probeer het opnieuw met internet.'});
   }
 }
+
 function restoreSeasonSnapshot(){
   if(isViewingFriend)return;
-  if(!dataLoaded){alert('Je gegevens zijn niet geladen. Probeer het opnieuw met internet.');return;}
+  if(!dataLoaded){showBackupModal({type:'err',text:'Je gegevens zijn niet geladen. Probeer het opnieuw met internet.'});return;}
   const snap=readSnapshot();
-  if(!snap||!snap.data){alert('Er staat nog geen seizoensback-up op dit apparaat.\n\nDie wordt automatisch gemaakt zodra je een nieuw seizoen start.');return;}
+  if(!snap||!snap.data){showBackupModal({type:'err',text:'Er staat nog geen back-up op dit apparaat. Die wordt automatisch gemaakt zodra je een nieuw seizoen start.'});return;}
   const d=new Date(snap.savedAt);
-  const nu=countMatches(data);
-  if(!confirm('Back-up van '+d.toLocaleDateString('nl-NL')+' terugzetten?\n\nIn de back-up: '+snap.matches+' wedstrijden.\nNu in de app: '+nu+' wedstrijden.'+
-    (snap.photos===false?'\n\nLet op: in deze back-up zitten geen foto\'s/logo\'s (die pasten niet).':'')+
-    '\n\nAlles wat er nu in staat wordt hiermee vervangen.'))return;
+  showBackupModal({type:'warn',restore:true,
+    text:'Back-up van '+d.toLocaleDateString('nl-NL')+' terugzetten? Daarin staan '+snap.matches+' wedstrijden, nu heb je er '+countMatches(data)+'.'+
+      (snap.photos===false?' Let op: in deze back-up zitten geen foto\'s of logo\'s.':'')+' Alles wat er nu in staat wordt vervangen.'});
+}
+
+function doRestoreSnapshot(){
+  const snap=readSnapshot();
+  if(!snap||!snap.data)return;
   data=JSON.parse(JSON.stringify(snap.data));
   if(!data.teams||!data.teams.length)data.teams=defaultTeams;
   if(!data.careers)data.careers=[];
   career=data.activeCareerId?(data.careers.find(c=>c.id===data.activeCareerId)||null):null;
   save();applyTheme();renderCareerBar();refreshAll();renderTeams();
-  alert('Back-up teruggezet.');
+  showBackupModal({type:'ok',text:'Back-up teruggezet: '+countMatches(data)+' wedstrijden.'});
 }
 
-function showBackupModal(){
+function showBackupModal(status){
   if(isViewingFriend)return;
   const snap=readSnapshot();
   let snapInfo;
   if(snap&&snap.data){
     const d=new Date(snap.savedAt);
-    snapInfo='<div style="font-size:13px;color:#ccc">Laatste seizoensback-up:<br><b>'+d.toLocaleDateString('nl-NL')+' '+d.toLocaleTimeString('nl-NL',{hour:'2-digit',minute:'2-digit'})+'</b> &middot; '+snap.matches+' wedstrijden'+
+    snapInfo='<div style="font-size:13px;color:#ccc">Laatste back-up op dit apparaat:<br><b>'+d.toLocaleDateString('nl-NL')+' '+d.toLocaleTimeString('nl-NL',{hour:'2-digit',minute:'2-digit'})+'</b> &middot; '+snap.matches+' wedstrijden'+
       (snap.photos===false?'<br><span style="color:#FF9800;font-size:12px">zonder foto\'s (die pasten niet)</span>':'')+'</div>';
   }else{
-    snapInfo='<div style="font-size:13px;color:#888">Nog geen seizoensback-up. Die wordt automatisch gemaakt zodra je een nieuw seizoen start.</div>';
+    snapInfo='<div style="font-size:13px;color:#888">Nog geen back-up op dit apparaat. Die wordt automatisch gemaakt zodra je een nieuw seizoen start.</div>';
+  }
+  let statusHtml='';
+  if(status&&status.text){
+    const kleur=status.type==='ok'?'#4CAF50':status.type==='warn'?'#FF9800':'#f44336';
+    statusHtml='<div style="background:'+kleur+'22;border:1px solid '+kleur+'55;color:'+kleur+';border-radius:8px;padding:10px 12px;margin-bottom:12px;font-size:13px">'+status.text+
+      (status.force?'<div style="margin-top:10px"><button class="btn btn-outline btn-sm" onclick="manualSnapshot(true)">Toch vervangen</button></div>':'')+
+      (status.restore?'<div style="margin-top:10px"><button class="btn btn-danger btn-sm" onclick="doRestoreSnapshot()">Ja, terugzetten</button></div>':'')+'</div>';
   }
   const html='<div class="modal">'+
     '<h3><i class="fa-solid fa-shield-halved"></i> Back-up</h3>'+
     '<p style="font-size:13px;color:#888;margin-bottom:12px">Je gegevens staan online. Bij het starten van een nieuw seizoen bewaart de app ook automatisch een kopie op dit apparaat.</p>'+
+    statusHtml+
     '<div style="background:#0d1420;border:1px solid #1e2a3a;border-radius:8px;padding:12px;margin-bottom:14px">'+snapInfo+
       '<div style="font-size:12px;color:#666;margin-top:8px">Nu in de app: '+countMatches(data)+' wedstrijden &middot; '+dataSizeKB()+' KB</div></div>'+
     '<div style="display:flex;flex-direction:column;gap:8px">'+
       '<button class="btn btn-primary" onclick="exportBackup()"><i class="fa-solid fa-download"></i> Back-upbestand downloaden</button>'+
       '<button class="btn btn-outline" onclick="manualSnapshot()"><i class="fa-solid fa-mobile-screen"></i> Nu een kopie op dit apparaat maken</button>'+
-      '<button class="btn btn-outline" onclick="closeModal(\'backup-modal\');restoreSeasonSnapshot()"><i class="fa-solid fa-rotate-left"></i> Back-up van dit apparaat terugzetten</button>'+
+      '<button class="btn btn-outline" onclick="restoreSeasonSnapshot()"><i class="fa-solid fa-rotate-left"></i> Back-up van dit apparaat terugzetten</button>'+
     '</div>'+
     '<div style="display:flex;justify-content:flex-end;margin-top:14px"><button class="btn btn-outline" onclick="closeModal(\'backup-modal\')">Sluiten</button></div>'+
   '</div>';
