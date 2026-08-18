@@ -27,7 +27,7 @@ body{background:var(--bg);color:var(--text);
   font-size:15px;line-height:1.4}
 body::before{content:'';position:fixed;inset:0 0 auto 0;height:360px;pointer-events:none;z-index:0;
   background:radial-gradient(120% 100% at 50% 0%,var(--tint) 0%,rgba(0,0,0,0) 72%);transition:background .35s}
-.app{max-width:560px;margin:0 auto;padding:12px 16px 118px;position:relative;z-index:1}
+.app{max-width:960px;margin:0 auto;padding:12px 16px 118px;position:relative;z-index:1}
 @media(min-width:600px){.app{padding:16px 20px 118px}}
 
 header{text-align:center;padding:6px 0 10px}
@@ -55,15 +55,14 @@ header h1{font-size:22px;font-weight:700;margin:8px 0 0;letter-spacing:-.02em}
 .career-chip.active{border-color:var(--accent)}
 
 /* ---- navigatie ---- */
-.nav-bar{position:relative;margin-bottom:16px}
-.nav-current{display:flex;align-items:center;gap:11px;background:var(--card);border-radius:16px;
-  padding:14px 16px;cursor:pointer;font-size:16px;font-weight:600}
+.nav-bar{position:static;margin:0}
+.nav-current{display:none}
 .nav-icon{color:var(--accent);font-size:17px;width:22px;text-align:center}
 .nav-arrow{margin-left:auto;color:#5A5A5E;font-size:13px;transition:transform .2s}
 .nav-current.open .nav-arrow{transform:rotate(180deg)}
-.nav-dropdown{display:none;position:absolute;top:calc(100% + 6px);left:0;right:0;background:var(--card);
-  border:1px solid var(--line);border-radius:16px;overflow:hidden;z-index:70;
-  box-shadow:0 16px 40px rgba(0,0,0,.6);max-height:66vh;overflow-y:auto}
+.nav-dropdown{display:none;position:fixed;left:12px;right:12px;bottom:calc(96px + env(safe-area-inset-bottom));
+  max-width:536px;margin:0 auto;background:var(--card);border:1px solid var(--line);border-radius:20px;
+  z-index:80;box-shadow:0 18px 50px rgba(0,0,0,.7);max-height:62vh;overflow-y:auto}
 .nav-dropdown.show{display:block}
 .nav-group-label{font-size:11px;text-transform:uppercase;letter-spacing:.09em;color:var(--muted);
   padding:12px 16px 6px;font-weight:700}
@@ -107,11 +106,12 @@ select:focus,input:focus,textarea:focus{border-color:var(--accent)}
 select{min-width:140px}
 textarea{width:100%;min-height:64px;resize:vertical}
 input[type="color"]{background:none;border:none;width:46px;height:34px;padding:0}
+.form-row input[type="number"]{width:82px;text-align:center;flex:0 0 auto}
 input[type="file"]{font-size:13px;color:var(--muted)}
 
 .filter-row{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}
 .filter-row select{flex:1;min-width:130px;font-size:14px;padding:11px 13px}
-.filter-row .search-input{font-size:14px;padding:11px 13px 11px 36px;flex:1;min-width:150px}
+.filter-row .search-input{font-size:14px;padding:11px 13px 11px 36px;width:100%;min-width:0}
 .filter-row .search-wrap{position:relative;flex:1;min-width:150px}
 .filter-row .search-wrap i{position:absolute;left:13px;top:50%;transform:translateY(-50%);
   color:var(--muted);font-size:13px;pointer-events:none}
@@ -1004,6 +1004,7 @@ async function loadUserData(uid, name) {
   if (data.activeCareerId) career = data.careers.find(c => c.id === data.activeCareerId) || null;
   applyTheme();
   initApp();
+  bereidLogosVoor();
   startRealtimeSync(uid);
   viewingUid = uid;
   startReactionsSync(uid);
@@ -1236,15 +1237,111 @@ async function stopViewing() {
 // ============================================
 function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
 function getInitials(n){return n.split(' ').filter(w=>w.length>1&&w[0]===w[0].toUpperCase()).map(w=>w[0]).join('').slice(0,3)||n.slice(0,2).toUpperCase();}
-function teamLogo(name,size){const s=size||32;const team=data.teams.find(t=>t.name===name);if(!team)return`<div class="team-logo" style="width:${s}px;height:${s}px">${esc((name||'?').slice(0,2))}</div>`;if(team.logo)return`<div class="team-logo" style="width:${s}px;height:${s}px"><img src="${esc(team.logo)}" alt="${esc(name)}"></div>`;return`<div class="team-logo" style="width:${s}px;height:${s}px;background:${team.color};color:#fff;font-size:${Math.round(s/3)}px">${esc(getInitials(name))}</div>`;}
-function teamLogoSm(name){const team=data.teams.find(t=>t.name===name);if(!team)return`<div class="team-logo-sm">${esc((name||'').slice(0,2))}</div>`;if(team.logo)return`<div class="team-logo-sm"><img src="${esc(team.logo)}"></div>`;return`<div class="team-logo-sm" style="background:${team.color};color:#fff">${esc(getInitials(name))}</div>`;}
+/* Oude logo's zijn als JPEG opgeslagen; JPEG kent geen doorzichtigheid, dus alles
+   wat doorzichtig was is zwart geworden. Hieronder wordt die egale rand vanaf de
+   buitenkant weggevuld en het logo bijgesneden. Zwart binnen het wapen blijft,
+   omdat er alleen vanaf de rand gevuld wordt. Alleen voor het tonen; de
+   opgeslagen gegevens blijven ongewijzigd. */
+const logoUitgeknipt={};
+function knipLogoRand(src,cb){
+  const img=new Image();
+  img.onload=function(){
+    const w=img.width,h=img.height;
+    if(!w||!h){cb(null);return;}
+    const c=document.createElement('canvas');c.width=w;c.height=h;
+    const ctx=c.getContext('2d');ctx.drawImage(img,0,0);
+    let d;try{d=ctx.getImageData(0,0,w,h);}catch(e){cb(null);return;}
+    const px=d.data,kl=i=>[px[i],px[i+1],px[i+2]];
+    const hk=[0,(w-1)*4,(h-1)*w*4,((h-1)*w+(w-1))*4].map(kl);
+    const gem=[0,1,2].map(k=>Math.round(hk.reduce((a,p)=>a+p[k],0)/4));
+    if(!hk.every(p=>Math.hypot(p[0]-gem[0],p[1]-gem[1],p[2]-gem[2])<28)){cb(null);return;}
+    const TOL=62,isBg=i=>Math.hypot(px[i]-gem[0],px[i+1]-gem[1],px[i+2]-gem[2])<TOL;
+    const gezien=new Uint8Array(w*h),stapel=[];
+    for(let x=0;x<w;x++){stapel.push(x,x+(h-1)*w);}
+    for(let y=0;y<h;y++){stapel.push(y*w,y*w+w-1);}
+    while(stapel.length){
+      const idx=stapel.pop();
+      if(gezien[idx])continue;
+      gezien[idx]=1;
+      const i=idx*4;
+      if(!isBg(i))continue;
+      px[i+3]=0;
+      const x=idx%w,y=(idx-x)/w;
+      if(x>0)stapel.push(idx-1);
+      if(x<w-1)stapel.push(idx+1);
+      if(y>0)stapel.push(idx-w);
+      if(y<h-1)stapel.push(idx+w);
+    }
+    ctx.putImageData(d,0,0);
+    let mnX=w,mnY=h,mxX=-1,mxY=-1;
+    for(let y=0;y<h;y++)for(let x=0;x<w;x++){
+      if(px[(y*w+x)*4+3]>24){if(x<mnX)mnX=x;if(x>mxX)mxX=x;if(y<mnY)mnY=y;if(y>mxY)mxY=y;}}
+    if(mxX<mnX||mxY<mnY){cb(null);return;}
+    const cw=mxX-mnX+1,ch=mxY-mnY+1;
+    if(cw*ch<w*h*0.04){cb(null);return;}
+    const uit=document.createElement('canvas');uit.width=cw;uit.height=ch;
+    uit.getContext('2d').drawImage(c,mnX,mnY,cw,ch,0,0,cw,ch);
+    cb(uit.toDataURL('image/png'));
+  };
+  img.onerror=function(){cb(null);};
+  img.src=src;
+}
+function bereidLogosVoor(){
+  const lijst=(data.teams||[]).filter(t=>t.logo&&String(t.logo).indexOf('data:image')===0&&!(t.name in logoUitgeknipt));
+  if(!lijst.length)return;
+  let klaar=0;
+  lijst.forEach(t=>{
+    logoUitgeknipt[t.name]=null;
+    knipLogoRand(t.logo,function(r){
+      if(r)logoUitgeknipt[t.name]=r;
+      if(++klaar===lijst.length){renderMatches();renderFavorites();renderTeams();renderCareerBar();renderFormation();}
+    });
+  });
+}
+function logoVan(team){return (team&&logoUitgeknipt[team.name])||(team&&team.logo)||'';}
+
+function teamLogo(name,size){const s=size||32;const team=data.teams.find(t=>t.name===name);if(!team)return`<div class="team-logo" style="width:${s}px;height:${s}px">${esc((name||'?').slice(0,2))}</div>`;if(team.logo)return`<div class="team-logo" style="width:${s}px;height:${s}px"><img src="${esc(logoVan(team))}" alt="${esc(name)}"></div>`;return`<div class="team-logo" style="width:${s}px;height:${s}px;background:${team.color};color:#fff;font-size:${Math.round(s/3)}px">${esc(getInitials(name))}</div>`;}
+function teamLogoSm(name){const team=data.teams.find(t=>t.name===name);if(!team)return`<div class="team-logo-sm">${esc((name||'').slice(0,2))}</div>`;if(team.logo)return`<div class="team-logo-sm"><img src="${esc(logoVan(team))}"></div>`;return`<div class="team-logo-sm" style="background:${team.color};color:#fff">${esc(getInitials(name))}</div>`;}
 function showModal(id){document.getElementById(id).classList.add('show');}
 function closeModal(id){const el=document.getElementById(id);if(el)el.classList.remove('show');}
 function getLeague(){return career?LEAGUES[career.country]:LEAGUES.nl;}
 
 function renderCareerBar(){const bar=document.getElementById('career-bar');bar.innerHTML=data.careers.map(c=>`<div class="career-chip ${c.id===data.activeCareerId?'active':''}" onclick="switchCareer('${c.id}')">${teamLogoSm(c.team)} ${esc(c.name)}${isViewingFriend?'':`<i class="fa-solid fa-xmark" style="font-size:10px;margin-left:4px;opacity:0.5" onclick="event.stopPropagation();deleteCareer('${c.id}')" title="Verwijderen"></i>`}</div>`).join('')+(isViewingFriend?'':`<div class="career-chip" onclick="showModal('career-modal');populateCareerModal()"><i class="fa-solid fa-plus"></i> Nieuwe career</div>`);}
 
-function applyTheme(){document.body.setAttribute('data-theme',career?career.country:'');}
+const THEMAS={
+ 'Eredivisie':{a:'#E63329',t:'rgba(230,51,41,.24)'},'Eerste Divisie':{a:'#F0A020',t:'rgba(240,160,32,.18)'},
+ 'Premier League':{a:'#00FF87',t:'rgba(55,0,60,.62)'},'Championship':{a:'#5AC8FA',t:'rgba(10,40,80,.45)'},
+ 'League One':{a:'#7FD1FF',t:'rgba(10,40,80,.35)'},'League Two':{a:'#9FDBFF',t:'rgba(10,40,80,.30)'},
+ 'Bundesliga':{a:'#F5001C',t:'rgba(245,0,28,.20)'},'2. Bundesliga':{a:'#FF6B6B',t:'rgba(245,0,28,.14)'},
+ 'La Liga':{a:'#FF7A00',t:'rgba(255,122,0,.20)'},'Segunda Division':{a:'#FFA94D',t:'rgba(255,122,0,.14)'},
+ 'Serie A':{a:'#00A3E0',t:'rgba(0,59,142,.45)'},'Serie B':{a:'#66C7EA',t:'rgba(0,59,142,.30)'},
+ 'Ligue 1':{a:'#DAFF01',t:'rgba(9,28,62,.66)'},'Ligue 2':{a:'#E8FF6B',t:'rgba(9,28,62,.45)'},
+ 'Champions League':{a:'#4C9BFF',t:'rgba(10,30,90,.62)'},'Europa League':{a:'#FF7A1A',t:'rgba(120,45,0,.45)'},
+ 'Conference League':{a:'#33D17A',t:'rgba(0,80,45,.45)'},
+ 'KNVB Beker':{a:'#FF9F0A',t:'rgba(255,159,10,.18)'},'FA Cup':{a:'#C9A227',t:'rgba(201,162,39,.18)'},
+ 'EFL Cup':{a:'#B8A6FF',t:'rgba(90,70,200,.25)'},'DFB-Pokal':{a:'#E1000F',t:'rgba(225,0,15,.18)'},
+ 'Copa del Rey':{a:'#C60B1E',t:'rgba(198,11,30,.18)'},'Coppa Italia':{a:'#0067B1',t:'rgba(0,103,177,.20)'},
+ 'Coupe de France':{a:'#7BA7FF',t:'rgba(30,60,140,.35)'},
+ 'Johan Cruijff Schaal':{a:'#FFD60A',t:'rgba(255,214,10,.16)'},'Community Shield':{a:'#FFD60A',t:'rgba(255,214,10,.16)'},
+ 'DFL-Supercup':{a:'#FFD60A',t:'rgba(255,214,10,.16)'},'Supercopa':{a:'#FFD60A',t:'rgba(255,214,10,.16)'},
+ 'Supercoppa':{a:'#FFD60A',t:'rgba(255,214,10,.16)'},'Trophee des Champions':{a:'#FFD60A',t:'rgba(255,214,10,.16)'},
+ 'Promotie play-offs':{a:'#A78BFA',t:'rgba(108,99,255,.22)'},'Degradatie play-offs':{a:'#FF6B8A',t:'rgba(200,40,80,.24)'},
+ 'Vriendschappelijk':{a:'#9E9EA4',t:'rgba(120,120,130,.16)'}
+};
+function thema(c){return THEMAS[c]||{a:'#6C63FF',t:'rgba(108,99,255,.20)'};}
+function hoofdCompetitie(){
+  if(!career)return '';
+  const tel={};
+  (career.matches||[]).forEach(m=>{if(getCompType(m.comp)==='league')tel[m.comp]=(tel[m.comp]||0)+1;});
+  const top=Object.keys(tel).sort((a,b)=>tel[b]-tel[a])[0];
+  return top||((LEAGUES[career.country]||LEAGUES.nl).comps[0]);
+}
+function applyTheme(){
+  document.body.setAttribute('data-theme',career?career.country:'');
+  const t=thema(hoofdCompetitie());
+  document.documentElement.style.setProperty('--accent',t.a);
+  document.documentElement.style.setProperty('--tint',t.t);
+}
 function switchCareer(id){data.activeCareerId=id;career=data.careers.find(c=>c.id===id)||null;save();applyTheme();renderCareerBar();refreshAll();}
 function deleteCareer(id){if(isViewingFriend)return;if(!confirm('Career mode verwijderen?'))return;data.careers=data.careers.filter(c=>c.id!==id);if(data.activeCareerId===id){data.activeCareerId=data.careers[0]?.id||null;career=data.careers[0]||null;}save();applyTheme();renderCareerBar();refreshAll();}
 function populateCareerModal(){const el=document.getElementById('cm-team');const sorted=[...data.teams].sort((a,b)=>a.name.localeCompare(b.name));el.innerHTML=sorted.map(t=>`<option>${esc(t.name)}</option>`).join('');}
@@ -1336,7 +1433,7 @@ function addMatch(){if(!career||isViewingFriend)return;
   const hasPens=document.getElementById('match-has-pens').checked;
   const penalties=hasPens?{home:parseInt(document.getElementById('pens-home').value)||0,away:parseInt(document.getElementById('pens-away').value)||0}:null;
   const m={season:document.getElementById('match-season').value,comp,day,round,home:document.getElementById('match-home').value,away:document.getElementById('match-away').value,homeScore:parseInt(document.getElementById('score-home').value)||0,awayScore:parseInt(document.getElementById('score-away').value)||0,penalties,note:document.getElementById('match-note').value.trim(),favorite:false,id:Date.now()};
-  if(m.home===m.away)return alert('Thuis en uit mogen niet hetzelfde zijn');career.matches.unshift(m);save();
+  if(m.home===m.away)return alert('Thuis en uit mogen niet hetzelfde zijn');career.matches.unshift(m);save();applyTheme();
   if(type==='league')document.getElementById('match-day').value=parseInt(document.getElementById('match-day').value)+1;
   document.getElementById('match-has-pens').checked=false;
   document.getElementById('match-pens-row').style.display='none';
@@ -1458,7 +1555,8 @@ function buildMatchCard(m,allMatches){
     aggHtml=`<div class="agg-result ${aggOutcome}"><i class="fa-solid ${outcomeIcon}"></i> Totaal ${totalHomeTeam}-${totalAwayTeam}${aggExtra} &middot; ${outcomeLabel}</div>`;
   }
 
-  return`<div class="match-card" onclick="toggleNote(this)">
+  const _th=thema(m.comp),_eu=EURO_COMPS.includes(m.comp);
+  return`<div class="match-card" style="--ca:${_th.a}${_eu?';background:linear-gradient(180deg,'+_th.t+' 0%,var(--card) 58%)':''}" onclick="toggleNote(this)">
     <div class="match-top">
       <div class="match-teams">
         <div class="match-team home">${esc(m.home)}</div>
@@ -2130,7 +2228,7 @@ function switchTab(tab){
 }
 
 document.addEventListener('click',function(e){
-  if(!e.target.closest('.nav-bar')){
+  if(!e.target.closest('.nav-bar')&&!e.target.closest('#tabbtn-meer')){
     document.getElementById('nav-dropdown').classList.remove('show');
     document.getElementById('nav-current').classList.remove('open');
   }
