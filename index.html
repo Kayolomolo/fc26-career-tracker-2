@@ -399,6 +399,19 @@ textarea { width: 100%; min-height: 60px; resize: vertical; }
             <option>Finale</option>
           </select>
         </div>
+        <div class="form-row" id="match-po-round-row" style="display:none">
+          <label>Ronde</label>
+          <select id="match-po-round">
+            <option>Eerste ronde heen</option>
+            <option>Eerste ronde terug</option>
+            <option>Halve finale heen</option>
+            <option>Halve finale terug</option>
+            <option>Halve finale</option>
+            <option>Finale heen</option>
+            <option>Finale terug</option>
+            <option>Finale</option>
+          </select>
+        </div>
         <div class="form-row" id="match-cup-round-row" style="display:none">
           <label>Ronde</label>
           <select id="match-cup-round">
@@ -777,12 +790,12 @@ const auth = firebase.auth();
 // GAME DATA (same as 1.0)
 // ============================================
 const LEAGUES = {
-  nl: { name:'Nederland',comps:['Eredivisie','Eerste Divisie','KNVB Beker','Europa League','Conference League','Champions League','Johan Cruijff Schaal'],trophies:[{id:'league',label:'Eredivisie',type:'pos',max:18},{id:'cup',label:'KNVB Beker',type:'round'},{id:'super',label:'Johan Cruijff Schaal',type:'final'},{id:'europa',label:'Europa League',type:'round'},{id:'conference',label:'Conference League',type:'round'},{id:'cl',label:'Champions League',type:'round'}]},
-  en: { name:'Engeland',comps:['Premier League','Championship','League One','League Two','FA Cup','EFL Cup','Community Shield','Europa League','Conference League','Champions League','Vriendschappelijk'],trophies:[{id:'league',label:'Competitie',type:'pos',max:24},{id:'facup',label:'FA Cup',type:'round'},{id:'eflcup',label:'EFL Cup',type:'round'},{id:'shield',label:'Community Shield',type:'final'},{id:'europa',label:'Europa League',type:'round'},{id:'conference',label:'Conference League',type:'round'},{id:'cl',label:'Champions League',type:'round'}]},
-  de: { name:'Duitsland',comps:['Bundesliga','2. Bundesliga','DFB-Pokal','DFL-Supercup','Europa League','Conference League','Champions League','Vriendschappelijk'],trophies:[{id:'league',label:'Competitie',type:'pos',max:18},{id:'cup',label:'DFB-Pokal',type:'round'},{id:'super',label:'DFL-Supercup',type:'final'},{id:'europa',label:'Europa League',type:'round'},{id:'conference',label:'Conference League',type:'round'},{id:'cl',label:'Champions League',type:'round'}]},
-  fr: { name:'Frankrijk',comps:['Ligue 1','Ligue 2','Coupe de France','Trophee des Champions','Europa League','Conference League','Champions League','Vriendschappelijk'],trophies:[{id:'league',label:'Competitie',type:'pos',max:20},{id:'cup',label:'Coupe de France',type:'round'},{id:'super',label:'Trophee des Champions',type:'final'},{id:'europa',label:'Europa League',type:'round'},{id:'conference',label:'Conference League',type:'round'},{id:'cl',label:'Champions League',type:'round'}]},
-  es: { name:'Spanje',comps:['La Liga','Segunda Division','Copa del Rey','Supercopa','Europa League','Conference League','Champions League','Vriendschappelijk'],trophies:[{id:'league',label:'Competitie',type:'pos',max:20},{id:'cup',label:'Copa del Rey',type:'round'},{id:'super',label:'Supercopa',type:'final'},{id:'europa',label:'Europa League',type:'round'},{id:'conference',label:'Conference League',type:'round'},{id:'cl',label:'Champions League',type:'round'}]},
-  it: { name:'Italie',comps:['Serie A','Serie B','Coppa Italia','Supercoppa','Europa League','Conference League','Champions League','Vriendschappelijk'],trophies:[{id:'league',label:'Competitie',type:'pos',max:20},{id:'cup',label:'Coppa Italia',type:'round'},{id:'super',label:'Supercoppa',type:'final'},{id:'europa',label:'Europa League',type:'round'},{id:'conference',label:'Conference League',type:'round'},{id:'cl',label:'Champions League',type:'round'}]}
+  nl: { name:'Nederland',comps:['Eredivisie','Eerste Divisie','KNVB Beker','Promotie play-offs','Degradatie play-offs','Europa League','Conference League','Champions League','Johan Cruijff Schaal'],trophies:[{id:'league',label:'Eredivisie',type:'pos',max:18},{id:'cup',label:'KNVB Beker',type:'round'},{id:'super',label:'Johan Cruijff Schaal',type:'final'},{id:'europa',label:'Europa League',type:'round'},{id:'conference',label:'Conference League',type:'round'},{id:'cl',label:'Champions League',type:'round'}]},
+  en: { name:'Engeland',comps:['Premier League','Championship','League One','League Two','FA Cup','EFL Cup','Community Shield','Promotie play-offs','Degradatie play-offs','Europa League','Conference League','Champions League','Vriendschappelijk'],trophies:[{id:'league',label:'Competitie',type:'pos',max:24},{id:'facup',label:'FA Cup',type:'round'},{id:'eflcup',label:'EFL Cup',type:'round'},{id:'shield',label:'Community Shield',type:'final'},{id:'europa',label:'Europa League',type:'round'},{id:'conference',label:'Conference League',type:'round'},{id:'cl',label:'Champions League',type:'round'}]},
+  de: { name:'Duitsland',comps:['Bundesliga','2. Bundesliga','DFB-Pokal','DFL-Supercup','Promotie play-offs','Degradatie play-offs','Europa League','Conference League','Champions League','Vriendschappelijk'],trophies:[{id:'league',label:'Competitie',type:'pos',max:18},{id:'cup',label:'DFB-Pokal',type:'round'},{id:'super',label:'DFL-Supercup',type:'final'},{id:'europa',label:'Europa League',type:'round'},{id:'conference',label:'Conference League',type:'round'},{id:'cl',label:'Champions League',type:'round'}]},
+  fr: { name:'Frankrijk',comps:['Ligue 1','Ligue 2','Coupe de France','Trophee des Champions','Promotie play-offs','Degradatie play-offs','Europa League','Conference League','Champions League','Vriendschappelijk'],trophies:[{id:'league',label:'Competitie',type:'pos',max:20},{id:'cup',label:'Coupe de France',type:'round'},{id:'super',label:'Trophee des Champions',type:'final'},{id:'europa',label:'Europa League',type:'round'},{id:'conference',label:'Conference League',type:'round'},{id:'cl',label:'Champions League',type:'round'}]},
+  es: { name:'Spanje',comps:['La Liga','Segunda Division','Copa del Rey','Supercopa','Promotie play-offs','Degradatie play-offs','Europa League','Conference League','Champions League','Vriendschappelijk'],trophies:[{id:'league',label:'Competitie',type:'pos',max:20},{id:'cup',label:'Copa del Rey',type:'round'},{id:'super',label:'Supercopa',type:'final'},{id:'europa',label:'Europa League',type:'round'},{id:'conference',label:'Conference League',type:'round'},{id:'cl',label:'Champions League',type:'round'}]},
+  it: { name:'Italie',comps:['Serie A','Serie B','Coppa Italia','Supercoppa','Promotie play-offs','Degradatie play-offs','Europa League','Conference League','Champions League','Vriendschappelijk'],trophies:[{id:'league',label:'Competitie',type:'pos',max:20},{id:'cup',label:'Coppa Italia',type:'round'},{id:'super',label:'Supercoppa',type:'final'},{id:'europa',label:'Europa League',type:'round'},{id:'conference',label:'Conference League',type:'round'},{id:'cl',label:'Champions League',type:'round'}]}
 };
 const ROUND_OPTIONS = ['Winnaar','Finalist','Halve finale','Kwartfinale','Achtste finale','Zestiende finale','Groepsfase','Niet deelgenomen'];
 const FINAL_OPTIONS = ['Winnaar','Verliezer','Niet deelgenomen'];
@@ -1249,9 +1262,11 @@ function addSeason(){if(!career||isViewingFriend)return;const last=career.season
 
 const EURO_COMPS = ['Champions League','Europa League','Conference League'];
 const CUP_COMPS = ['KNVB Beker','FA Cup','EFL Cup','DFB-Pokal','Coupe de France','Copa del Rey','Coppa Italia'];
+const PLAYOFF_COMPS = ['Promotie play-offs','Degradatie play-offs'];
 
 function getCompType(comp) {
   if (EURO_COMPS.includes(comp)) return 'euro';
+  if (PLAYOFF_COMPS.includes(comp)) return 'playoff';
   if (CUP_COMPS.includes(comp)) return 'cup';
   return 'league';
 }
@@ -1262,6 +1277,7 @@ function updateMatchFields() {
   document.getElementById('match-day-row').style.display = type==='league'?'flex':'none';
   document.getElementById('match-round-row').style.display = type==='euro'?'flex':'none';
   document.getElementById('match-cup-round-row').style.display = type==='cup'?'flex':'none';
+  document.getElementById('match-po-round-row').style.display = type==='playoff'?'flex':'none';
 }
 document.getElementById('match-comp').addEventListener('change', updateMatchFields);
 
@@ -1271,6 +1287,7 @@ function addMatch(){if(!career||isViewingFriend)return;
   let day=0, round='';
   if(type==='league'){day=parseInt(document.getElementById('match-day').value)||1;}
   else if(type==='euro'){round=document.getElementById('match-round').value;}
+  else if(type==='playoff'){round=document.getElementById('match-po-round').value;}
   else{round=document.getElementById('match-cup-round').value;}
   const hasPens=document.getElementById('match-has-pens').checked;
   const penalties=hasPens?{home:parseInt(document.getElementById('pens-home').value)||0,away:parseInt(document.getElementById('pens-away').value)||0}:null;
@@ -1290,10 +1307,13 @@ function editMatch(id){
   const type=getCompType(m.comp);
   const euroOpts=['Groepsfase speeldag 1','Groepsfase speeldag 2','Groepsfase speeldag 3','Groepsfase speeldag 4','Groepsfase speeldag 5','Groepsfase speeldag 6','Groepsfase speeldag 7','Groepsfase speeldag 8','Tussenronde heen','Tussenronde terug','Achtste finale heen','Achtste finale terug','Kwartfinale heen','Kwartfinale terug','Halve finale heen','Halve finale terug','Finale'];
   const cupOpts=['Eerste ronde','Tweede ronde','Derde ronde','Zestiende finale','Achtste finale','Kwartfinale','Halve finale','Finale'];
+  const poOpts=['Eerste ronde heen','Eerste ronde terug','Halve finale heen','Halve finale terug','Halve finale','Finale heen','Finale terug','Finale'];
 
   let roundHtml='';
   if(type==='euro'){
     roundHtml=`<div class="form-row"><label>Ronde</label><select id="edit-round">${euroOpts.map(o=>`<option${o===m.round?' selected':''}>${o}</option>`).join('')}</select></div>`;
+  }else if(type==='playoff'){
+    roundHtml=`<div class="form-row"><label>Ronde</label><select id="edit-round">${poOpts.map(o=>`<option${o===m.round?' selected':''}>${o}</option>`).join('')}</select></div>`;
   }else if(type==='cup'){
     roundHtml=`<div class="form-row"><label>Ronde</label><select id="edit-round">${cupOpts.map(o=>`<option${o===m.round?' selected':''}>${o}</option>`).join('')}</select></div>`;
   }else{
