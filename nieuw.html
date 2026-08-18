@@ -259,7 +259,7 @@ body{background:var(--bg);color:var(--text);
 </style>
 </head>
 <body>
-<div class="readonly"><i class="fa-solid fa-eye"></i> Kijkmodus &middot; je echte gegevens, er wordt niets opgeslagen</div>
+<div class="readonly" id="banner"><i class="fa-solid fa-eye"></i> Kijkmodus &middot; je echte gegevens, er wordt niets opgeslagen</div>
 <div class="glow"></div>
 <div class="wrap"><div id="screen"><div class="laden"><div class="spin"></div>Je gegevens laden...</div></div></div>
 
@@ -573,9 +573,74 @@ function initials(n){
   return b.length===1?b[0].toUpperCase().slice(0,3):b.map(x=>x[0]).join('').toUpperCase().slice(0,3);
 }
 function teamObj(n){return (data.teams||[]).find(t=>t.name===n)||{name:n,color:'#3A3A3C',logo:''};}
+
+/* Bestaande logo's zijn als JPEG opgeslagen. JPEG kent geen doorzichtigheid, dus
+   alles wat ooit doorzichtig was is zwart geworden en zit in de pixels gebakken.
+   Hieronder wordt die egale achtergrond vanaf de randen weggevuld en het logo
+   strak bijgesneden, zodat alleen het wapen zelf overblijft. Zwart binnen het
+   wapen (bijv. zwart-witte shirts) blijft staan, want dat raakt de rand niet. */
+const uitgeknipt={};
+function knipAchtergrondWeg(src,cb){
+  const img=new Image();
+  img.onload=function(){
+    const w=img.width,h=img.height;
+    if(!w||!h){cb(null);return;}
+    const c=document.createElement('canvas');c.width=w;c.height=h;
+    const ctx=c.getContext('2d');ctx.drawImage(img,0,0);
+    let d;
+    try{d=ctx.getImageData(0,0,w,h);}catch(e){cb(null);return;}
+    const px=d.data;
+    const kleurOp=i=>[px[i],px[i+1],px[i+2]];
+    const hoeken=[0,(w-1)*4,(h-1)*w*4,((h-1)*w+(w-1))*4].map(kleurOp);
+    const gem=[0,1,2].map(k=>Math.round(hoeken.reduce((a,p)=>a+p[k],0)/4));
+    const afwijking=hoeken.every(p=>Math.hypot(p[0]-gem[0],p[1]-gem[1],p[2]-gem[2])<28);
+    if(!afwijking){cb(null);return;}          // geen egale rand: niets doen
+    const TOL=62;
+    const lijktOpAchtergrond=i=>Math.hypot(px[i]-gem[0],px[i+1]-gem[1],px[i+2]-gem[2])<TOL;
+    // vullen vanaf de randen, zodat alleen de buitenkant verdwijnt
+    const gezien=new Uint8Array(w*h);
+    const stapel=[];
+    for(let x=0;x<w;x++){stapel.push(x,x+(h-1)*w);}
+    for(let y=0;y<h;y++){stapel.push(y*w,y*w+w-1);}
+    while(stapel.length){
+      const idx=stapel.pop();
+      if(gezien[idx])continue;
+      gezien[idx]=1;
+      const i=idx*4;
+      if(!lijktOpAchtergrond(i))continue;
+      px[i+3]=0;
+      const x=idx%w,y=(idx-x)/w;
+      if(x>0)stapel.push(idx-1);
+      if(x<w-1)stapel.push(idx+1);
+      if(y>0)stapel.push(idx-w);
+      if(y<h-1)stapel.push(idx+w);
+    }
+    ctx.putImageData(d,0,0);
+    // bijsnijden tot wat er overblijft
+    let mnX=w,mnY=h,mxX=-1,mxY=-1;
+    for(let y=0;y<h;y++)for(let x=0;x<w;x++){
+      if(px[(y*w+x)*4+3]>24){if(x<mnX)mnX=x;if(x>mxX)mxX=x;if(y<mnY)mnY=y;if(y>mxY)mxY=y;}}
+    if(mxX<mnX||mxY<mnY){cb(null);return;}     // alles weg: origineel houden
+    const cw=mxX-mnX+1,ch=mxY-mnY+1;
+    if(cw*ch<w*h*0.04){cb(null);return;}       // verdacht klein: origineel houden
+    const uit=document.createElement('canvas');uit.width=cw;uit.height=ch;
+    uit.getContext('2d').drawImage(c,mnX,mnY,cw,ch,0,0,cw,ch);
+    cb(uit.toDataURL('image/png'));
+  };
+  img.onerror=function(){cb(null);};
+  img.src=src;
+}
+async function bereidLogosVoor(){
+  const teams=(data.teams||[]).filter(t=>t.logo&&String(t.logo).indexOf('data:image')===0);
+  await Promise.all(teams.map(t=>new Promise(res=>{
+    knipAchtergrondWeg(t.logo,function(r){if(r)uitgeknipt[t.name]=r;res();});
+  })));
+  teken();
+}
 function crest(n,cls){
   const t=teamObj(n),c=cls||'crest';
-  if(t.logo)return '<div class="'+c+' has-logo"><img src="'+esc(t.logo)+'" alt=""></div>';
+  const logo=uitgeknipt[n]||t.logo;
+  if(logo)return '<div class="'+c+' has-logo"><img src="'+esc(logo)+'" alt=""></div>';
   return '<div class="'+c+'" style="background:'+esc(t.color||'#3A3A3C')+'">'+esc(initials(n))+'</div>';
 }
 function kop(t,terug){
@@ -781,10 +846,14 @@ function schermVrienden(){
   if(!vrienden.length)return kop('Vrienden','meer')+'<div class="laden"><div class="spin"></div>Vrienden laden...</div>';
   return kop('Vrienden','meer')+
     '<p class="hint">'+vrienden.length+' spelers gevonden</p>'+
-    '<div class="list">'+vrienden.map(v=>'<div class="lrow">'+
+    '<div class="list">'+vrienden.map(v=>{
+      const zelf=v.uid===mijnUid;
+      return '<div class="lrow"'+(zelf||!v.careers?'':' onclick="bekijkVriend(\''+jq(v.uid)+'\',\''+jq(v.name)+'\')"')+'>'+
       '<div class="li"><i class="fa-solid fa-user"></i></div>'+
-      '<div class="lt">'+esc(v.name)+'<div class="lsub">'+(v.uid===mijnUid?'jij':(v.careers+' career'+(v.careers===1?'':'s')+' · '+v.matches+' wedstrijden'))+'</div></div>'+
-      '</div>').join('')+'</div>';
+      '<div class="lt">'+esc(v.name)+'<div class="lsub">'+(zelf?'jij':
+        (v.careers?v.careers+' career'+(v.careers===1?'':'s')+' · '+v.matches+' wedstrijden':'nog geen gegevens'))+'</div></div>'+
+      (zelf||!v.careers?'':'<i class="fa-solid fa-chevron-right chev"></i>')+
+      '</div>';}).join('')+'</div>';
 }
 
 const MEER=[
@@ -800,6 +869,51 @@ function schermMeer(){
       '<div class="li"><i class="fa-solid '+m.i+'"></i></div>'+
       '<div class="lt">'+m.t+'</div><i class="fa-solid fa-chevron-right chev"></i></div>').join('')+'</div>'+
     '<p class="hint" style="margin-top:16px">Nog niet in deze kijkversie: wedstrijden toevoegen of bewerken, klassement invullen, opstelling wijzigen, progressiegrafiek, carri&egrave;res vergelijken, head-to-head, reacties plaatsen, in- en uitloggen, importeren en back-up. Die komen erbij zodra het uiterlijk klopt.</p>';
+}
+
+/* ===== career van een vriend bekijken (alleen lezen) ===== */
+let bekekenNaam='', eigenData=null;
+async function bekijkVriend(uid,naam){
+  document.getElementById('screen').innerHTML='<div class="laden"><div class="spin"></div>Gegevens van '+esc(naam)+' laden...</div>';
+  try{
+    const doc=await db.collection('users').doc(uid).collection('data').doc('main').get();
+    if(!doc.exists){teken();alert('Deze speler heeft nog geen gegevens.');return;}
+    if(!eigenData)eigenData=data;
+    data=doc.data()||{teams:[],careers:[],activeCareerId:null};
+    if(!data.teams)data.teams=[];
+    if(!data.careers)data.careers=[];
+    isViewingFriend=true;bekekenNaam=naam;
+    Object.keys(uitgeknipt).forEach(k=>delete uitgeknipt[k]);
+    actief=Math.max(0,data.careers.findIndex(c=>c.id===data.activeCareerId));
+    career=data.careers[actief]||null;
+    reacties={};laadReacties(uid);
+    filterComp='Alles';filterSeizoen='Alles';
+    pasThemaToe();ga('wedstrijden');bereidLogosVoor();
+    toonBanner();
+  }catch(e){
+    console.error(e);
+    teken();alert('Kon de gegevens niet laden: '+e.message);
+  }
+}
+async function stopBekijken(){
+  if(eigenData){data=eigenData;eigenData=null;}
+  isViewingFriend=false;bekekenNaam='';
+  Object.keys(uitgeknipt).forEach(k=>delete uitgeknipt[k]);
+  actief=Math.max(0,data.careers.findIndex(c=>c.id===data.activeCareerId));
+  career=data.careers[actief]||null;
+  reacties={};if(mijnUid)laadReacties(mijnUid);
+  filterComp='Alles';filterSeizoen='Alles';
+  pasThemaToe();ga('wedstrijden');bereidLogosVoor();toonBanner();
+}
+function toonBanner(){
+  const b=document.getElementById('banner');
+  b.innerHTML=isViewingFriend
+    ? '<i class="fa-solid fa-user"></i> Je bekijkt de career van <b>'+esc(bekekenNaam)+
+      '</b> <button class="pill" style="margin-left:10px;padding:5px 12px" onclick="stopBekijken()">Terug naar mijzelf</button>'
+    : '<i class="fa-solid fa-eye"></i> Kijkmodus &middot; je echte gegevens, er wordt niets opgeslagen';
+  b.style.background=isViewingFriend?'rgba(108,99,255,.18)':'rgba(255,159,10,.16)';
+  b.style.borderBottomColor=isViewingFriend?'rgba(108,99,255,.4)':'rgba(255,159,10,.35)';
+  b.style.color=isViewingFriend?'#B9B2FF':'#FFB84D';
 }
 
 /* ===== navigatie ===== */
@@ -868,6 +982,7 @@ auth.onAuthStateChanged(async user=>{
     career=data.careers[actief]||null;
     document.getElementById('tabbar').style.display='';
     pasThemaToe();teken();
+    bereidLogosVoor();
     laadReacties(user.uid);
     setTimeout(()=>{if(huidig==='wedstrijden')teken();},1200);
   }catch(e){
