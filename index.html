@@ -199,6 +199,34 @@ input[type="file"]{font-size:13px;color:var(--muted)}
 .stat-card .value{font-size:28px;font-weight:600;letter-spacing:-.02em}
 .stat-card .label{font-size:12.5px;color:var(--muted);margin-top:4px}
 
+/* ---- tegenstanders ---- */
+.tg-rij{padding:12px 0}
+.tg-rij+.tg-rij{border-top:1px solid var(--line)}
+.tg-label{font-size:13.5px;color:var(--muted);margin-bottom:9px}
+.tg-inhoud{display:flex;align-items:center;gap:11px}
+.tg-naam{font-size:15px;font-weight:600;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tg-getal{font-size:26px;font-weight:700;flex-shrink:0}
+.tg-logos{display:flex;gap:10px;flex-wrap:wrap}
+.tg-logo{display:flex}
+.tg-leeg{font-size:13px;color:#5A5A5E}
+
+/* ---- reacties ---- */
+.reaction-open{display:flex;align-items:center;gap:7px;background:var(--card-2);border:none;
+  color:#ccc;border-radius:20px;padding:7px 13px;font-size:13px;font-weight:600;
+  font-family:inherit;cursor:pointer}
+.reaction-open i{font-size:14px}
+.reaction-open .rcount{background:var(--accent);color:#fff;border-radius:10px;padding:1px 7px;font-size:11px}
+.rsums{display:flex;gap:6px;align-items:center}
+.rsum{background:var(--card-2);border-radius:14px;padding:3px 9px;font-size:14px}
+.rsum b{font-size:11px;color:var(--muted);margin-left:3px}
+.rtxt{font-size:12px;color:var(--muted)}
+.berichten{max-height:34vh;overflow-y:auto;display:flex;flex-direction:column;gap:8px}
+.bericht{background:var(--card-2);border-radius:14px;padding:10px 12px}
+.b-kop{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted);margin-bottom:4px}
+.b-kop b{color:var(--accent);font-size:12.5px}
+.b-wis{margin-left:auto;background:none;border:none;color:#5A5A5E;cursor:pointer;font-size:12px;padding:2px 4px}
+.b-tekst{font-size:14.5px;line-height:1.4;word-break:break-word}
+
 /* ---- klassement ---- */
 .standings-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:14px}
 .standing-card{background:var(--card);border-radius:18px;padding:16px;text-align:center}
@@ -575,6 +603,8 @@ input[type="file"]{font-size:13px;color:var(--muted)}
       <div class="stats-grid" id="stats-grid"></div>
       <h3 style="margin:16px 0 12px;font-size:16px">Recente resultaten</h3>
       <div id="recent-results"></div>
+      <h3 style="margin:20px 0 12px;font-size:17px">Tegenstanders</h3>
+      <div id="tegenstanders"></div>
     </div>
 
     <!-- Opstelling -->
@@ -1057,11 +1087,13 @@ function startReactionsSync(uid) {
       reactionsByMatch = {};
       snap.forEach(doc => {
         const r = doc.data();
+        r.id = doc.id;
         if (!reactionsByMatch[r.matchId]) reactionsByMatch[r.matchId] = [];
         reactionsByMatch[r.matchId].push(r);
       });
       renderMatches();
       renderFavorites();
+      tekenReacties();
       if (document.getElementById('review-season') && document.getElementById('review-season').value) renderSeasonReview();
     }, err => { console.error('Reactions sync error:', err); });
 }
@@ -1089,6 +1121,66 @@ async function toggleReaction(matchId, emoji) {
   } catch(e) { console.error('Reactie mislukt:', e); }
 }
 
+/* ---- reactievenster: emoji's en berichten ---- */
+let _reactieMatch=null;
+function openReacties(matchId){
+  _reactieMatch=matchId;
+  let overlay=document.getElementById('reacties-modal');
+  if(!overlay){overlay=document.createElement('div');overlay.id='reacties-modal';overlay.className='modal-overlay';document.body.appendChild(overlay);}
+  overlay.classList.add('show');
+  tekenReacties();
+}
+function tekenReacties(){
+  const overlay=document.getElementById('reacties-modal');
+  if(!overlay||_reactieMatch===null)return;
+  const lijst=reactionsByMatch[_reactieMatch]||[];
+  const mijn=new Set(lijst.filter(r=>r.reactorUid===currentUserId&&r.emoji).map(r=>r.emoji));
+  const tel={};
+  lijst.filter(r=>r.emoji).forEach(r=>{tel[r.emoji]=(tel[r.emoji]||0)+1;});
+  const extra=Object.keys(tel).filter(e=>!REACTION_EMOJIS.includes(e));
+  const emojis=REACTION_EMOJIS.concat(extra);
+  const berichten=lijst.filter(r=>r.text).sort((a,b)=>((a.ts&&a.ts.seconds)||0)-((b.ts&&b.ts.seconds)||0));
+  overlay.innerHTML=`<div class="modal">
+    <h3><i class="fa-regular fa-comment"></i> Reacties</h3>
+    <div class="reactions-row" style="border:none;margin:0 0 14px;padding:0">
+      ${emojis.map(e=>`<button class="reaction-btn${mijn.has(e)?' active':''}" onclick="toggleReaction(${_reactieMatch},'${jsAttr(e)}')">${esc(e)}${tel[e]?`<span class="reaction-count">${tel[e]}</span>`:''}</button>`).join('')}
+      <button class="reaction-btn reaction-add" onclick="addCustomReaction(${_reactieMatch})" title="Eigen emoji">+</button>
+    </div>
+    <div class="berichten">
+      ${berichten.length?berichten.map(r=>`<div class="bericht">
+          <div class="b-kop"><b>${esc(r.reactorName||'Speler')}</b>${r.reactorUid===currentUserId?`<button class="b-wis" onclick="wisBericht('${jsAttr(r.id||'')}')" title="Verwijderen"><i class="fa-solid fa-trash"></i></button>`:''}</div>
+          <div class="b-tekst">${esc(r.text)}</div>
+        </div>`).join(''):'<div class="no-data" style="padding:14px">Nog geen berichten</div>'}
+    </div>
+    <div class="form-row" style="margin-top:14px;gap:8px">
+      <input type="text" id="reactie-tekst" placeholder="Schrijf een bericht..." style="flex:1;min-width:0" maxlength="300">
+      <button class="btn btn-primary btn-sm" onclick="plaatsBericht()">Plaats</button>
+    </div>
+    <div style="display:flex;justify-content:flex-end;margin-top:12px">
+      <button class="btn btn-outline" onclick="closeModal('reacties-modal')">Sluiten</button>
+    </div>
+  </div>`;
+}
+async function plaatsBericht(){
+  const el=document.getElementById('reactie-tekst');
+  const tekst=(el?el.value:'').trim();
+  if(!tekst||!currentUserId||!viewingUid||_reactieMatch===null)return;
+  const id=viewingUid+'_'+_reactieMatch+'_'+currentUserId+'_t'+Date.now();
+  try{
+    await db.collection('reactions').doc(id).set({
+      ownerUid:viewingUid, matchId:_reactieMatch, reactorUid:currentUserId,
+      reactorName:localStorage.getItem('fc26_username')||'Speler',
+      text:tekst, ts:firebase.firestore.FieldValue.serverTimestamp()
+    });
+    if(el)el.value='';
+  }catch(e){console.error('Bericht plaatsen mislukt:',e);alert('Bericht plaatsen mislukt.');}
+}
+async function wisBericht(id){
+  if(!id)return;
+  try{await db.collection('reactions').doc(id).delete();}
+  catch(e){console.error('Verwijderen mislukt:',e);}
+}
+
 function addCustomReaction(matchId) {
   const val = prompt('Eigen reactie (bijv. 😱 of 💀):');
   if (val && val.trim()) toggleReaction(matchId, val.trim().slice(0, 10));
@@ -1096,19 +1188,26 @@ function addCustomReaction(matchId) {
 
 function buildReactionsHtml(matchId) {
   const list = reactionsByMatch[matchId] || [];
-  const mySet = new Set(list.filter(r => r.reactorUid === currentUserId).map(r => r.emoji));
+  const mySet = new Set(list.filter(r => r.reactorUid === currentUserId && r.emoji).map(r => r.emoji));
   const counts = {};
-  list.forEach(r => { counts[r.emoji] = (counts[r.emoji] || 0) + 1; });
+  list.filter(r => r.emoji).forEach(r => { counts[r.emoji] = (counts[r.emoji] || 0) + 1; });
   const extraEmojis = Object.keys(counts).filter(e => !REACTION_EMOJIS.includes(e));
   const allEmojis = REACTION_EMOJIS.concat(extraEmojis);
   const buttonsHtml = allEmojis.map(e => {
+    /* gebruikt in het reactievenster */
     const c = counts[e] || 0;
     const active = mySet.has(e);
     return `<button class="reaction-btn${active ? ' active' : ''}" onclick="event.stopPropagation();toggleReaction(${matchId},'${jsAttr(e)}')">${esc(e)}${c ? `<span class="reaction-count">${c}</span>` : ''}</button>`;
   }).join('');
-  const addHtml = `<button class="reaction-btn reaction-add" onclick="event.stopPropagation();addCustomReaction(${matchId})" title="Eigen reactie">+</button>`;
-  const whoHtml = list.length ? `<div class="reaction-who">${list.map(r => `${esc(r.reactorName || '?')} ${esc(r.emoji)}`).join(', ')}</div>` : '';
-  return `<div class="reactions-row">${buttonsHtml}${addHtml}</div>${whoHtml}`;
+  const emojiSamenvatting = allEmojis.filter(e=>counts[e]).map(e=>`<span class="rsum">${esc(e)}${counts[e]>1?`<b>${counts[e]}</b>`:''}</span>`).join('');
+  const aantalTekst = list.filter(r=>r.text).length;
+  return `<div class="reactions-row">
+    <button class="reaction-open" onclick="event.stopPropagation();openReacties(${matchId})">
+      <i class="fa-regular fa-comment"></i>${list.length?`<span class="rcount">${list.length}</span>`:'<span>Reageren</span>'}
+    </button>
+    ${emojiSamenvatting?`<span class="rsums">${emojiSamenvatting}</span>`:''}
+    ${aantalTekst?`<span class="rtxt">${aantalTekst} bericht${aantalTekst===1?'':'en'}</span>`:''}
+  </div>`;
 }
 
 function startRealtimeSync(uid) {
@@ -1665,7 +1764,50 @@ function posClass(val){if(val==='Winnaar')return'gold';if(val==='Finalist'||val=
 function trophyDisplay(t,val){if(!val||val==='Niet deelgenomen')return{text:'n.v.t.',cls:'none'};if(t.type==='pos')return{text:'#'+val,cls:val==='1'?'gold':val==='2'?'silver':val==='3'?'bronze':'gray'};return{text:val,cls:posClass(val)};}
 function renderStandings(){const el=document.getElementById('standings-grid');if(!career){el.innerHTML='<div class="no-data">Maak eerst een career mode aan</div>';return;}const season=document.getElementById('view-standing-season').value;const league=getLeague();const seasonsToShow=season?[season]:career.seasons;let html='';seasonsToShow.forEach(s=>{const st=career.standings[s];if(!st)return;html+=`<div style="grid-column:1/-1;font-size:16px;font-weight:600;margin-top:12px;color:var(--accent)">${esc(s)}</div>`;html+=league.trophies.map(t=>{const val=st[t.id];const pts=st[t.id+'_pts'];const{text,cls}=trophyDisplay(t,val);const ptsHtml=pts?`<div style="font-size:13px;color:#888;margin-top:4px">${pts} punten</div>`:'';return`<div class="standing-card"><h4>${t.label}</h4><div class="position ${cls}">${text}</div>${ptsHtml}</div>`;}).join('');});if(!html)html='<div class="no-data">Nog geen klassementen opgeslagen</div>';el.innerHTML=html;}
 
-function renderStats(){if(!career){document.getElementById('stats-grid').innerHTML='';document.getElementById('recent-results').innerHTML='<div class="no-data">Maak eerst een career mode aan</div>';return;}const season=document.getElementById('stats-season').value;const comp=document.getElementById('stats-comp').value;let matches=career.matches;if(season)matches=matches.filter(m=>m.season===season);if(comp)matches=matches.filter(m=>m.comp===comp);const myMatches=matches.filter(m=>m.home===career.team||m.away===career.team);let wins=0,draws=0,losses=0,gf=0,ga=0,wStreak=0,bestWStreak=0,ubStreak=0,bestUbStreak=0;myMatches.forEach(m=>{const isHome=m.home===career.team;const my=isHome?m.homeScore:m.awayScore,their=isHome?m.awayScore:m.homeScore;gf+=my;ga+=their;const outcome=matchOutcome(m,career.team);if(outcome==='win'){wins++;wStreak++;ubStreak++;if(wStreak>bestWStreak)bestWStreak=wStreak;}else if(outcome==='loss'){losses++;wStreak=0;ubStreak=0;}else{draws++;wStreak=0;ubStreak++;} if(ubStreak>bestUbStreak)bestUbStreak=ubStreak;});document.getElementById('stats-grid').innerHTML=`<div class="stat-card"><div class="value">${myMatches.length}</div><div class="label">Wedstrijden</div></div><div class="stat-card"><div class="value" style="color:#4CAF50">${wins}</div><div class="label">Gewonnen</div></div><div class="stat-card"><div class="value" style="color:#FF9800">${draws}</div><div class="label">Gelijk</div></div><div class="stat-card"><div class="value" style="color:#f44336">${losses}</div><div class="label">Verloren</div></div><div class="stat-card"><div class="value">${gf}</div><div class="label">Goals voor</div></div><div class="stat-card"><div class="value">${ga}</div><div class="label">Goals tegen</div></div><div class="stat-card"><div class="value" style="color:#4CAF50">${bestWStreak}</div><div class="label">Winstreek</div></div><div class="stat-card"><div class="value" style="color:var(--accent)">${bestUbStreak}</div><div class="label">Ongeslagen reeks</div></div><div class="stat-card"><div class="value">${myMatches.length?Math.round(wins/myMatches.length*100):0}%</div><div class="label">Win %</div></div>`;const recent=myMatches.slice(0,5);document.getElementById('recent-results').innerHTML=recent.length?recent.map(m=>{const outcome=matchOutcome(m,career.team);const rc=outcome==='win'?'#4CAF50':outcome==='loss'?'#f44336':'#FF9800';const penHtml=m.penalties?`<div style="font-size:10px;color:#888;margin-top:1px">n.p. ${m.penalties.home}-${m.penalties.away}</div>`:'';return`<div class="match-card" style="margin-bottom:6px;cursor:default"><div class="match-top"><div class="match-teams"><div class="match-team home">${esc(m.home)}</div>${teamLogo(m.home)}<div><div class="match-score" style="color:${rc}">${m.homeScore} - ${m.awayScore}</div>${penHtml}</div>${teamLogo(m.away)}<div class="match-team away">${esc(m.away)}</div></div></div><div class="match-meta"><div class="match-comp">${esc(m.comp)}</div><div>${esc(m.round||('SD '+m.day))} | ${esc(m.season)}</div></div></div>`;}).join(''):'<div class="no-data">Geen wedstrijden</div>';}
+function renderTegenstanders(){
+  const el=document.getElementById('tegenstanders');
+  if(!el)return;
+  if(!career){el.innerHTML='';return;}
+  const season=document.getElementById('stats-season')?document.getElementById('stats-season').value:'';
+  const comp=document.getElementById('stats-comp')?document.getElementById('stats-comp').value:'';
+  let ms=(career.matches||[]).filter(m=>m.home===career.team||m.away===career.team);
+  if(season)ms=ms.filter(m=>m.season===season);
+  if(comp)ms=ms.filter(m=>m.comp===comp);
+  if(!ms.length){el.innerHTML='<div class="no-data">Nog geen wedstrijden</div>';return;}
+  const per={};
+  ms.forEach(m=>{
+    const thuis=m.home===career.team;
+    const tegen=thuis?m.away:m.home;
+    const voor=thuis?m.homeScore:m.awayScore;
+    const teg=thuis?m.awayScore:m.homeScore;
+    const p=per[tegen]||(per[tegen]={naam:tegen,voor:0,tegen:0,w:0,g:0,v:0,n:0});
+    p.voor+=voor;p.tegen+=teg;p.n++;
+    const u=matchOutcome(m,career.team);
+    if(u==='win')p.w++;else if(u==='loss')p.v++;else p.g++;
+  });
+  const alle=Object.values(per);
+  const meesteVoor=alle.slice().sort((a,b)=>b.voor-a.voor)[0];
+  const meesteTegen=alle.slice().sort((a,b)=>b.tegen-a.tegen)[0];
+  const ongeslagen=alle.filter(p=>p.v===0).sort((a,b)=>b.n-a.n).slice(0,8);
+  const nooitVerslagen=alle.filter(p=>p.w===0).sort((a,b)=>b.n-a.n).slice(0,8);
+  const rijTop=(label,p,waarde)=>p&&waarde>0?`<div class="tg-rij">
+      <div class="tg-label">${label}</div>
+      <div class="tg-inhoud">${teamLogo(p.naam,34)}<span class="tg-naam">${esc(p.naam)}</span>
+        <span class="tg-getal">${waarde}</span></div></div>`:'';
+  const rijLijst=(label,lijst,leeg)=>`<div class="tg-rij">
+      <div class="tg-label">${label}</div>
+      ${lijst.length?`<div class="tg-logos">${lijst.map(p=>
+        `<span class="tg-logo" title="${esc(p.naam)} (${p.n})">${teamLogo(p.naam,34)}</span>`).join('')}</div>`
+        :`<div class="tg-leeg">${leeg}</div>`}</div>`;
+  el.innerHTML='<div class="card" style="margin-bottom:0">'+
+    rijTop('Meeste doelpunten gescoord tegen',meesteVoor,meesteVoor?meesteVoor.voor:0)+
+    rijTop('Meeste doelpunten tegen ontvangen van',meesteTegen,meesteTegen?meesteTegen.tegen:0)+
+    rijLijst('Ongeslagen tegen',ongeslagen,'Tegen iedereen wel eens verloren')+
+    rijLijst('Nooit verslagen',nooitVerslagen,'Iedereen wel eens verslagen')+
+  '</div>';
+}
+
+function renderStats(){if(!career){document.getElementById('stats-grid').innerHTML='';document.getElementById('recent-results').innerHTML='<div class="no-data">Maak eerst een career mode aan</div>';return;}const season=document.getElementById('stats-season').value;const comp=document.getElementById('stats-comp').value;let matches=career.matches;if(season)matches=matches.filter(m=>m.season===season);if(comp)matches=matches.filter(m=>m.comp===comp);const myMatches=matches.filter(m=>m.home===career.team||m.away===career.team);let wins=0,draws=0,losses=0,gf=0,ga=0,wStreak=0,bestWStreak=0,ubStreak=0,bestUbStreak=0;myMatches.forEach(m=>{const isHome=m.home===career.team;const my=isHome?m.homeScore:m.awayScore,their=isHome?m.awayScore:m.homeScore;gf+=my;ga+=their;const outcome=matchOutcome(m,career.team);if(outcome==='win'){wins++;wStreak++;ubStreak++;if(wStreak>bestWStreak)bestWStreak=wStreak;}else if(outcome==='loss'){losses++;wStreak=0;ubStreak=0;}else{draws++;wStreak=0;ubStreak++;} if(ubStreak>bestUbStreak)bestUbStreak=ubStreak;});document.getElementById('stats-grid').innerHTML=`<div class="stat-card"><div class="value">${myMatches.length}</div><div class="label">Wedstrijden</div></div><div class="stat-card"><div class="value" style="color:#4CAF50">${wins}</div><div class="label">Gewonnen</div></div><div class="stat-card"><div class="value" style="color:#FF9800">${draws}</div><div class="label">Gelijk</div></div><div class="stat-card"><div class="value" style="color:#f44336">${losses}</div><div class="label">Verloren</div></div><div class="stat-card"><div class="value">${gf}</div><div class="label">Goals voor</div></div><div class="stat-card"><div class="value">${ga}</div><div class="label">Goals tegen</div></div><div class="stat-card"><div class="value" style="color:#4CAF50">${bestWStreak}</div><div class="label">Winstreek</div></div><div class="stat-card"><div class="value" style="color:var(--accent)">${bestUbStreak}</div><div class="label">Ongeslagen reeks</div></div><div class="stat-card"><div class="value">${myMatches.length?Math.round(wins/myMatches.length*100):0}%</div><div class="label">Win %</div></div>`;renderTegenstanders();const recent=myMatches.slice(0,5);document.getElementById('recent-results').innerHTML=recent.length?recent.map(m=>{const outcome=matchOutcome(m,career.team);const rc=outcome==='win'?'#4CAF50':outcome==='loss'?'#f44336':'#FF9800';const penHtml=m.penalties?`<div style="font-size:10px;color:#888;margin-top:1px">n.p. ${m.penalties.home}-${m.penalties.away}</div>`:'';return`<div class="match-card" style="margin-bottom:6px;cursor:default"><div class="match-top"><div class="match-teams"><div class="match-team home">${esc(m.home)}</div>${teamLogo(m.home)}<div><div class="match-score" style="color:${rc}">${m.homeScore} - ${m.awayScore}</div>${penHtml}</div>${teamLogo(m.away)}<div class="match-team away">${esc(m.away)}</div></div></div><div class="match-meta"><div class="match-comp">${esc(m.comp)}</div><div>${esc(m.round||('SD '+m.day))} | ${esc(m.season)}</div></div></div>`;}).join(''):'<div class="no-data">Geen wedstrijden</div>';}
 
 function showAddPlayer(){if(!career||isViewingFriend)return;document.getElementById('pl-name').value='';document.getElementById('pl-rating').value='';document.getElementById('pl-photo').value='';showModal('player-modal');}
 function resizeImgAspect(file,targetW,targetH,cb){const reader=new FileReader();reader.onload=function(ev){const img=new Image();img.onload=function(){const c=document.createElement('canvas');c.width=targetW;c.height=targetH;const ctx=c.getContext('2d'),sc=Math.max(targetW/img.width,targetH/img.height),w=img.width*sc,h=img.height*sc;ctx.drawImage(img,(targetW-w)/2,(targetH-h)/2,w,h);cb(c.toDataURL('image/jpeg',0.75));};img.src=ev.target.result;};reader.readAsDataURL(file);}
