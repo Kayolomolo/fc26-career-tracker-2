@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>FC 26 Tracker — nieuw design</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<style>
+:root{
+  --bg:#0A0A0C;
+  --card:#1C1C1E;
+  --card-2:#232326;
+  --line:#2C2C2F;
+  --text:#FFFFFF;
+  --muted:#8E8E93;
+  --accent:#6C63FF;
+  --win:#30D158;
+  --loss:#FF453A;
+  --draw:#FFFFFF;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;padding:0}
+body{
+  background:var(--bg);color:var(--text);
+  font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",Roboto,sans-serif;
+  padding-bottom:96px;
+}
+.wrap{max-width:520px;margin:0 auto;padding:0 16px}
+
+/* ---------- kop ---------- */
+.topbar{display:flex;align-items:center;gap:12px;padding:14px 0 18px;position:relative}
+.icon-btn{
+  width:44px;height:44px;border-radius:50%;background:var(--card);border:none;color:var(--text);
+  font-size:16px;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0
+}
+.topbar h1{flex:1;text-align:center;font-size:20px;font-weight:600;margin:0}
+.topbar .spacer{width:44px;flex-shrink:0}
+
+/* ---------- zoekbalk ---------- */
+.search{position:relative;margin-bottom:22px}
+.search i{position:absolute;left:18px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:15px}
+.search input{
+  width:100%;background:var(--card);border:none;border-radius:16px;
+  padding:15px 16px 15px 46px;color:var(--text);font-size:16px;font-family:inherit;outline:none
+}
+.search input::placeholder{color:var(--muted)}
+
+/* ---------- secties ---------- */
+.section-label{font-size:19px;font-weight:600;color:var(--muted);margin:22px 2px 12px}
+
+/* ---------- clubkiezer ---------- */
+.club-card{
+  background:var(--card);border-radius:18px;padding:18px 20px;
+  display:flex;align-items:center;gap:16px;cursor:pointer;border:1px solid transparent
+}
+.club-card.mine{border-color:var(--accent)}
+.club-list{background:var(--card);border-radius:18px;overflow:hidden}
+.club-row{display:flex;align-items:center;gap:16px;padding:14px 20px;cursor:pointer}
+.club-row+.club-row{border-top:1px solid var(--line)}
+.club-row:active,.club-card:active{background:var(--card-2)}
+.crest{
+  width:44px;height:44px;border-radius:50%;flex-shrink:0;overflow:hidden;
+  display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:#fff
+}
+.crest img{width:100%;height:100%;object-fit:contain}
+.club-name{font-size:17px;font-weight:500}
+.club-card .club-name{font-size:18px;font-weight:600}
+
+/* ---------- uitslagen ---------- */
+.match{background:var(--card);border-radius:22px;padding:20px 16px 18px;margin-bottom:14px}
+.match-comp{
+  text-align:center;font-size:13px;font-weight:600;letter-spacing:.09em;
+  text-transform:uppercase;color:var(--muted);margin-bottom:18px
+}
+.match-row{display:grid;grid-template-columns:1fr auto 1fr;align-items:start;gap:10px}
+.side{display:flex;flex-direction:column;align-items:center;gap:10px}
+.side .crest{width:58px;height:58px;font-size:17px}
+.side-name{
+  font-size:13px;font-weight:700;letter-spacing:.03em;text-transform:uppercase;
+  text-align:center;line-height:1.25;color:#EDEDED
+}
+.score{display:flex;flex-direction:column;align-items:center;padding-top:6px;min-width:104px}
+.score-line{font-size:40px;font-weight:600;line-height:1;letter-spacing:-.02em;display:flex;gap:10px;align-items:baseline}
+.score-sep{color:var(--muted);font-weight:400}
+.score-sub{font-size:12px;font-weight:500;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-top:8px}
+.comp-badge{display:flex;justify-content:center;margin-top:16px;opacity:.9}
+.comp-badge .badge-img{width:36px;height:36px;object-fit:contain}
+.comp-badge .badge-ph{
+  width:36px;height:36px;border-radius:50%;border:1px dashed var(--line);
+  display:flex;align-items:center;justify-content:center;color:#5A5A5E;font-size:11px;font-weight:700
+}
+
+/* ---------- competities ---------- */
+.comp-row{
+  background:var(--card);border-radius:18px;padding:14px 16px;margin-bottom:10px;
+  display:flex;align-items:center;gap:14px
+}
+.comp-logo{
+  width:48px;height:48px;border-radius:14px;background:var(--card-2);flex-shrink:0;
+  display:flex;align-items:center;justify-content:center;overflow:hidden
+}
+.comp-logo img{width:100%;height:100%;object-fit:contain}
+.comp-logo .ph{color:#5A5A5E;font-size:16px}
+.comp-info{flex:1;min-width:0}
+.comp-name{font-size:16px;font-weight:600}
+.comp-sub{font-size:12px;color:var(--muted);margin-top:2px}
+.pill{
+  background:var(--card-2);border:none;color:var(--text);border-radius:12px;
+  padding:9px 14px;font-size:13px;font-weight:600;font-family:inherit;cursor:pointer;white-space:nowrap
+}
+.pill.ghost{background:transparent;border:1px solid var(--line);color:var(--muted)}
+.pill:active{opacity:.7}
+
+.hint{font-size:13px;color:var(--muted);line-height:1.5;margin:0 2px 18px}
+
+/* ---------- onderbalk ---------- */
+.tabbar{
+  position:fixed;left:0;right:0;bottom:0;display:flex;justify-content:center;
+  padding:10px 12px calc(10px + env(safe-area-inset-bottom));
+  background:linear-gradient(to top,rgba(10,10,12,.98) 60%,rgba(10,10,12,0))
+}
+.tabbar-inner{display:flex;gap:6px;background:var(--card);border-radius:26px;padding:6px}
+.tab{
+  border:none;background:transparent;color:var(--muted);font-family:inherit;
+  padding:10px 18px;border-radius:22px;font-size:12px;font-weight:600;cursor:pointer;
+  display:flex;flex-direction:column;align-items:center;gap:5px;min-width:74px
+}
+.tab i{font-size:17px}
+.tab.active{background:var(--card-2);color:var(--accent)}
+
+.view{display:none}
+.view.active{display:block}
+.empty{color:var(--muted);text-align:center;padding:34px 0;font-size:15px}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+
+  <!-- ================= UITSLAGEN ================= -->
+  <div class="view active" id="view-results">
+    <div class="topbar">
+      <button class="icon-btn"><i class="fa-solid fa-chevron-left"></i></button>
+      <h1>Uitslagen</h1>
+      <div class="spacer"></div>
+    </div>
+    <div id="results-list"></div>
+  </div>
+
+  <!-- ================= CLUB KIEZEN ================= -->
+  <div class="view" id="view-clubs">
+    <div class="topbar">
+      <button class="icon-btn"><i class="fa-solid fa-chevron-left"></i></button>
+      <h1>Kies een club</h1>
+      <div class="spacer"></div>
+    </div>
+    <div class="search">
+      <i class="fa-solid fa-magnifying-glass"></i>
+      <input type="text" id="club-search" placeholder="Zoeken" oninput="renderClubs()">
+    </div>
+    <div id="clubs-content"></div>
+  </div>
+
+  <!-- ================= COMPETITIES ================= -->
+  <div class="view" id="view-comps">
+    <div class="topbar">
+      <button class="icon-btn"><i class="fa-solid fa-chevron-left"></i></button>
+      <h1>Competities</h1>
+      <div class="spacer"></div>
+    </div>
+    <p class="hint">Voeg per competitie een logo toe, net zoals bij teams. Het logo verschijnt daarna onder de score bij Uitslagen.</p>
+    <div id="comps-list"></div>
+  </div>
+
+</div>
+
+<div class="tabbar">
+  <div class="tabbar-inner">
+    <button class="tab active" data-view="results" onclick="showView('results')"><i class="fa-solid fa-list"></i>Uitslagen</button>
+    <button class="tab" data-view="clubs" onclick="showView('clubs')"><i class="fa-solid fa-shield-halved"></i>Clubs</button>
+    <button class="tab" data-view="comps" onclick="showView('comps')"><i class="fa-solid fa-trophy"></i>Competities</button>
+  </div>
+</div>
+
+<script>
+// ============ voorbeeldgegevens (alleen voor dit ontwerp) ============
+const MY_TEAM='Ajax';
+
+const TEAMS=[
+  {name:'Ajax',color:'#D2122E'},
+  {name:'AZ',color:'#CC0000'},
+  {name:'AVS Futebol SAD',color:'#8A1538'},
+  {name:'1. FC Magdeburg',color:'#0E63AD'},
+  {name:'1. FC Heidenheim',color:'#E30613'},
+  {name:'1. FC Kaiserslautern',color:'#E2001A'},
+  {name:'1. FC Köln',color:'#E32219'},
+  {name:'1. FC Nürnberg',color:'#AD1220'},
+  {name:'Feyenoord',color:'#EE1C25'},
+  {name:'PSV',color:'#ED1C24'},
+  {name:'FC Twente',color:'#E30613'},
+  {name:'FC Utrecht',color:'#D50032'},
+  {name:'Go Ahead Eagles',color:'#E30613'},
+  {name:'sc Heerenveen',color:'#0051A5'},
+  {name:'NEC',color:'#009A44'},
+  {name:'FC Groningen',color:'#00A651'}
+];
+
+const COMPS=[
+  {name:'Eredivisie',sub:'Competitie'},
+  {name:'KNVB Beker',sub:'Beker'},
+  {name:'Champions League',sub:'Europees'},
+  {name:'Europa League',sub:'Europees'},
+  {name:'Johan Cruijff Schaal',sub:'Supercup'},
+  {name:'Promotie play-offs',sub:'Play-offs'}
+];
+
+const MATCHES=[
+  {comp:'Eredivisie',home:'Ajax',away:'AZ',hs:1,as:1,type:'Regulier'},
+  {comp:'Eredivisie',home:'Ajax',away:'AVS Futebol SAD',hs:0,as:2,type:'Regulier'},
+  {comp:'Champions League',home:'1. FC Magdeburg',away:'Ajax',hs:1,as:3,type:'Regulier'},
+  {comp:'KNVB Beker',home:'Ajax',away:'1. FC Heidenheim',hs:2,as:2,type:'Na penalty\'s',pens:'4-3'},
+  {comp:'Eredivisie',home:'Feyenoord',away:'Ajax',hs:0,as:1,type:'Regulier'}
+];
+
+// ============ opgeslagen competitielogo's ============
+const LOGO_KEY='fc26_design_complogos';
+let compLogos={};
+try{compLogos=JSON.parse(localStorage.getItem(LOGO_KEY)||'{}');}catch(e){compLogos={};}
+function saveLogos(){try{localStorage.setItem(LOGO_KEY,JSON.stringify(compLogos));}catch(e){alert('Logo past niet in de opslag van je browser.');}}
+
+// ============ hulpjes ============
+function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+const GENERIEK=['fc','afc','sc','ac','vfl','vfb','tsg','sv','bsc','cf','ud','cd','sd','rc','fk','ss','us'];
+function initials(n){
+  const woorden=n.replace(/^\d+\.\s*/,'').split(/\s+/).filter(x=>x.length>1);
+  // Een hoofdletterafkorting in de naam (KNVB, AVS, PSV) is al de afkorting
+  const acroniem=woorden.find(w=>/^[A-Z]{3,}$/.test(w));
+  if(acroniem)return acroniem.slice(0,4);
+  if(woorden.length===1&&/^[A-Z]{2}$/.test(woorden[0]))return woorden[0];
+  const kern=woorden.filter(w=>!GENERIEK.includes(w.toLowerCase()));
+  const bron=kern.length?kern:woorden;
+  if(bron.length===1)return bron[0].toUpperCase().slice(0,3);
+  return bron.map(w=>w[0]).join('').toUpperCase().slice(0,3);
+}
+function team(n){return TEAMS.find(t=>t.name===n)||{name:n,color:'#3A3A3C'};}
+function crest(n,cls){
+  const t=team(n);
+  return '<div class="'+(cls||'crest')+'" style="background:'+t.color+'">'+esc(initials(n))+'</div>';
+}
+
+// ============ uitslagen ============
+function outcome(m){
+  const isHome=m.home===MY_TEAM, isAway=m.away===MY_TEAM;
+  if(!isHome&&!isAway)return null;
+  const my=isHome?m.hs:m.as, their=isHome?m.as:m.hs;
+  if(my>their)return'win';
+  if(my<their)return'loss';
+  return'draw';
+}
+function renderResults(){
+  document.getElementById('results-list').innerHTML=MATCHES.map(m=>{
+    const res=outcome(m);
+    const kleur=res==='win'?'var(--win)':res==='loss'?'var(--loss)':'var(--draw)';
+    const isHome=m.home===MY_TEAM;
+    const hsKleur=res?(isHome?kleur:'var(--draw)'):'var(--draw)';
+    const asKleur=res?(isHome?'var(--draw)':kleur):'var(--draw)';
+    const logo=compLogos[m.comp];
+    const badge=logo
+      ? '<img class="badge-img" src="'+logo+'" alt="">'
+      : '<div class="badge-ph">'+esc(initials(m.comp))+'</div>';
+    return '<div class="match">'+
+      '<div class="match-comp">'+esc(m.comp)+'</div>'+
+      '<div class="match-row">'+
+        '<div class="side">'+crest(m.home)+'<div class="side-name">'+esc(m.home)+'</div></div>'+
+        '<div class="score">'+
+          '<div class="score-line">'+
+            '<span style="color:'+hsKleur+'">'+m.hs+'</span>'+
+            '<span class="score-sep">-</span>'+
+            '<span style="color:'+asKleur+'">'+m.as+'</span>'+
+          '</div>'+
+          '<div class="score-sub">'+esc(m.type)+(m.pens?' '+esc(m.pens):'')+'</div>'+
+        '</div>'+
+        '<div class="side">'+crest(m.away)+'<div class="side-name">'+esc(m.away)+'</div></div>'+
+      '</div>'+
+      '<div class="comp-badge">'+badge+'</div>'+
+    '</div>';
+  }).join('');
+}
+
+// ============ clubkiezer ============
+function renderClubs(){
+  const q=(document.getElementById('club-search').value||'').trim().toLowerCase();
+  const match=t=>!q||t.name.toLowerCase().includes(q);
+  const mine=TEAMS.find(t=>t.name===MY_TEAM);
+  const rest=TEAMS.filter(t=>t.name!==MY_TEAM&&match(t))
+                  .sort((a,b)=>a.name.localeCompare(b.name,'nl'));
+  let html='';
+  if(mine&&match(mine)){
+    html+='<div class="section-label">Mijn team</div>'+
+      '<div class="club-card mine">'+crest(mine.name)+'<div class="club-name">'+esc(mine.name)+'</div></div>';
+  }
+  html+='<div class="section-label">Alle teams</div>';
+  html+=rest.length
+    ? '<div class="club-list">'+rest.map(t=>'<div class="club-row">'+crest(t.name)+'<div class="club-name">'+esc(t.name)+'</div></div>').join('')+'</div>'
+    : '<div class="empty">Geen clubs gevonden</div>';
+  document.getElementById('clubs-content').innerHTML=html;
+}
+
+// ============ competities ============
+function renderComps(){
+  document.getElementById('comps-list').innerHTML=COMPS.map((c,i)=>{
+    const logo=compLogos[c.name];
+    const vak=logo
+      ? '<img src="'+logo+'" alt="">'
+      : '<i class="fa-solid fa-image ph"></i>';
+    return '<div class="comp-row">'+
+      '<div class="comp-logo" onclick="kiesLogo('+i+')">'+vak+'</div>'+
+      '<div class="comp-info"><div class="comp-name">'+esc(c.name)+'</div>'+
+        '<div class="comp-sub">'+esc(c.sub)+(logo?' &middot; logo toegevoegd':'')+'</div></div>'+
+      (logo
+        ? '<button class="pill ghost" onclick="wisLogo('+i+')">Wissen</button>'
+        : '<button class="pill" onclick="kiesLogo('+i+')">Logo</button>')+
+    '</div>';
+  }).join('');
+}
+
+function kiesLogo(i){
+  const naam=COMPS[i].name;
+  const input=document.createElement('input');
+  input.type='file';input.accept='image/*';
+  input.onchange=function(e){
+    const file=e.target.files[0];
+    if(!file)return;
+    const reader=new FileReader();
+    reader.onload=function(ev){
+      const img=new Image();
+      img.onload=function(){
+        // schalen naar max 96px, transparantie blijft behouden (PNG)
+        const max=96, sc=Math.min(1,max/Math.max(img.width,img.height));
+        const w=Math.max(1,Math.round(img.width*sc)), h=Math.max(1,Math.round(img.height*sc));
+        const c=document.createElement('canvas');c.width=w;c.height=h;
+        c.getContext('2d').drawImage(img,0,0,w,h);
+        compLogos[naam]=c.toDataURL('image/png');
+        saveLogos();renderComps();renderResults();
+      };
+      img.src=ev.target.result;
+    };
+    reader.readAsDataURL(file);
+  };
+  input.click();
+}
+function wisLogo(i){
+  delete compLogos[COMPS[i].name];
+  saveLogos();renderComps();renderResults();
+}
+
+// ============ navigatie ============
+function showView(v){
+  document.querySelectorAll('.view').forEach(el=>el.classList.remove('active'));
+  document.getElementById('view-'+v).classList.add('active');
+  document.querySelectorAll('.tab').forEach(b=>b.classList.toggle('active',b.dataset.view===v));
+  window.scrollTo(0,0);
+}
+
+renderResults();renderClubs();renderComps();
+</script>
+</body>
+</html>
