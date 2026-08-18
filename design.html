@@ -8,11 +8,15 @@
 <style>
 :root{
   --bg:#0A0A0C; --card:#1C1C1E; --card-2:#232326; --line:#2C2C2F;
-  --text:#FFFFFF; --muted:#8E8E93; --accent:#6C63FF;
+  --text:#FFFFFF; --muted:#8E8E93; --accent:#6C63FF; --tint:rgba(108,99,255,.20);
   --win:#30D158; --loss:#FF453A; --draw:#FFFFFF; --warn:#FF9F0A;
   --gold:#FFD60A; --silver:#C7C7CC; --bronze:#D08A3E;
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+.glow{position:fixed;inset:0 0 auto 0;height:340px;pointer-events:none;z-index:0;
+  background:radial-gradient(120% 100% at 50% 0%,var(--tint) 0%,rgba(0,0,0,0) 72%);
+  transition:background .35s}
+.wrap,.tabbar,.fab{position:relative;z-index:1}
 html,body{margin:0;padding:0}
 body{background:var(--bg);color:var(--text);
   font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",Roboto,sans-serif;
@@ -68,7 +72,8 @@ body{background:var(--bg);color:var(--text);
 .club-card .club-name{font-size:18px;font-weight:600}
 
 /* wedstrijdkaart */
-.match{background:var(--card);border-radius:22px;padding:20px 16px 18px;margin-bottom:14px}
+.match{background:var(--card);border-radius:22px;padding:20px 16px 18px;margin-bottom:14px;
+  border-top:2px solid var(--ca,transparent)}
 .match-comp{text-align:center;font-size:13px;font-weight:600;letter-spacing:.09em;
   text-transform:uppercase;color:var(--muted);margin-bottom:18px}
 .match-row{display:grid;grid-template-columns:1fr auto 1fr;align-items:start;gap:10px}
@@ -82,8 +87,9 @@ body{background:var(--bg);color:var(--text);
 .score-sub{font-size:12px;font-weight:500;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-top:8px}
 .comp-badge{display:flex;justify-content:center;margin-top:16px;opacity:.9}
 .comp-badge .badge-img{width:36px;height:36px;object-fit:contain}
-.comp-badge .badge-ph{width:36px;height:36px;border-radius:50%;border:1px dashed var(--line);
-  display:flex;align-items:center;justify-content:center;color:#5A5A5E;font-size:11px;font-weight:700}
+.comp-badge .badge-ph{width:36px;height:36px;border-radius:50%;
+  border:1px dashed var(--ca,var(--line));display:flex;align-items:center;justify-content:center;
+  color:var(--ca,#5A5A5E);font-size:11px;font-weight:700;opacity:.85}
 .agg{margin-top:14px;text-align:center;font-size:12px;font-weight:600;padding:8px;border-radius:12px}
 .agg.door{background:rgba(48,209,88,.14);color:var(--win)}
 .agg.uit{background:rgba(255,69,58,.14);color:var(--loss)}
@@ -183,6 +189,12 @@ body{background:var(--bg);color:var(--text);
 .lrow .chev{color:#5A5A5E;font-size:13px}
 .rank{width:26px;font-size:17px;font-weight:700;text-align:center;color:var(--muted);flex-shrink:0}
 .rank.top{color:var(--gold)}
+.theme-row{display:flex;align-items:center;gap:14px;padding:14px 18px;cursor:pointer}
+.theme-row+.theme-row{border-top:1px solid var(--line)}
+.swatch{width:34px;height:34px;border-radius:11px;flex-shrink:0}
+.theme-row .tn2{flex:1;font-size:16px;font-weight:500;min-width:0}
+.theme-row .lsub{font-size:13px;color:var(--muted);margin-top:2px;font-weight:400}
+.theme-row .nu{font-size:12px;font-weight:700;color:var(--accent)}
 
 /* competities */
 .comp-row{background:var(--card);border-radius:18px;padding:14px 16px;margin-bottom:10px;
@@ -228,6 +240,7 @@ body{background:var(--bg);color:var(--text);
 </head>
 <body>
 
+<div class="glow"></div>
 <div class="wrap"><div id="screen"></div></div>
 
 <button class="fab" id="fab" onclick="ga('toevoegen')"><i class="fa-solid fa-plus"></i></button>
@@ -243,28 +256,89 @@ body{background:var(--bg);color:var(--text);
 
 <script>
 /* ================= voorbeeldgegevens ================= */
-const MY_TEAM='Ajax';
 const TEAMS=[
  {name:'Ajax',color:'#D2122E'},{name:'AZ',color:'#CC0000'},{name:'AVS Futebol SAD',color:'#8A1538'},
  {name:'1. FC Magdeburg',color:'#0E63AD'},{name:'1. FC Heidenheim',color:'#E30613'},
  {name:'1. FC Kaiserslautern',color:'#E2001A'},{name:'1. FC Köln',color:'#E32219'},
  {name:'1. FC Nürnberg',color:'#AD1220'},{name:'Feyenoord',color:'#EE1C25'},{name:'PSV',color:'#ED1C24'},
  {name:'FC Twente',color:'#E30613'},{name:'FC Utrecht',color:'#D50032'},{name:'Go Ahead Eagles',color:'#E30613'},
- {name:'sc Heerenveen',color:'#0051A5'},{name:'NEC',color:'#009A44'},{name:'FC Groningen',color:'#00A651'}
+ {name:'sc Heerenveen',color:'#0051A5'},{name:'NEC',color:'#009A44'},{name:'FC Groningen',color:'#00A651'},
+ {name:'Arsenal',color:'#EF0107'},{name:'Man City',color:'#6CABDD'},{name:'Liverpool',color:'#C8102E'},
+ {name:'Chelsea',color:'#034694'},{name:'Tottenham',color:'#132257'},{name:'Newcastle',color:'#241F20'},
+ {name:'Bayern München',color:'#DC052D'},{name:'Borussia Dortmund',color:'#FDE100'},
+ {name:'RB Leipzig',color:'#DD0741'},{name:'Bayer Leverkusen',color:'#E32221'},
+ {name:'Stuttgart',color:'#E32219'},{name:'Werder Bremen',color:'#1D9053'},
+ {name:'FC Barcelona',color:'#A50044'},{name:'Real Madrid',color:'#FEBE10'},
+ {name:'Atlético Madrid',color:'#CB3524'},{name:'Sevilla',color:'#F43333'},
+ {name:'Valencia',color:'#F18E00'},{name:'Real Betis',color:'#00954C'},
+ {name:'Inter Milan',color:'#010E80'},{name:'AC Milan',color:'#FB090B'},{name:'Juventus',color:'#2B2B2B'},
+ {name:'Napoli',color:'#004A8D'},{name:'AS Roma',color:'#8E1F2F'},{name:'Lazio',color:'#87D8F7'},
+ {name:'Paris SG',color:'#004170'},{name:'Marseille',color:'#2FAEE0'},{name:'Lyon',color:'#003DA5'},
+ {name:'Monaco',color:'#E30613'},{name:'Lille',color:'#E30613'},{name:'Lens',color:'#E30613'}
 ];
+/* Elk thema: accentkleur + gloed bovenaan het scherm */
+const THEMAS={
+ 'Eredivisie'         :{a:'#E63329',t:'rgba(230,51,41,.24)'},
+ 'Premier League'     :{a:'#00FF87',t:'rgba(55,0,60,.62)'},
+ 'Bundesliga'         :{a:'#F5001C',t:'rgba(245,0,28,.20)'},
+ 'La Liga'            :{a:'#FF7A00',t:'rgba(255,122,0,.20)'},
+ 'Serie A'            :{a:'#00A3E0',t:'rgba(0,59,142,.45)'},
+ 'Ligue 1'            :{a:'#DAFF01',t:'rgba(9,28,62,.66)'},
+ 'Champions League'   :{a:'#4C9BFF',t:'rgba(10,30,90,.62)'},
+ 'Europa League'      :{a:'#FF7A1A',t:'rgba(120,45,0,.45)'},
+ 'Conference League'  :{a:'#33D17A',t:'rgba(0,80,45,.45)'},
+ 'KNVB Beker'         :{a:'#FF9F0A',t:'rgba(255,159,10,.18)'},
+ 'FA Cup'             :{a:'#C9A227',t:'rgba(201,162,39,.18)'},
+ 'DFB-Pokal'          :{a:'#E1000F',t:'rgba(225,0,15,.18)'},
+ 'Copa del Rey'       :{a:'#C60B1E',t:'rgba(198,11,30,.18)'},
+ 'Coppa Italia'       :{a:'#0067B1',t:'rgba(0,103,177,.20)'},
+ 'Coupe de France'    :{a:'#7BA7FF',t:'rgba(30,60,140,.35)'},
+ 'Promotie play-offs' :{a:'#A78BFA',t:'rgba(108,99,255,.22)'}
+};
+const EUROPEES=['Champions League','Europa League','Conference League'];
+function thema(c){return THEMAS[c]||{a:'#6C63FF',t:'rgba(108,99,255,.20)'};}
+
+const LANDEN={
+ 'Eredivisie':{cup:'KNVB Beker',opp:['PSV','Feyenoord','AZ','FC Twente','NEC']},
+ 'Premier League':{cup:'FA Cup',opp:['Man City','Liverpool','Chelsea','Tottenham','Newcastle']},
+ 'Bundesliga':{cup:'DFB-Pokal',opp:['Borussia Dortmund','RB Leipzig','Bayer Leverkusen','Stuttgart','Werder Bremen']},
+ 'La Liga':{cup:'Copa del Rey',opp:['Real Madrid','Atlético Madrid','Sevilla','Valencia','Real Betis']},
+ 'Serie A':{cup:'Coppa Italia',opp:['AC Milan','Juventus','Napoli','AS Roma','Lazio']},
+ 'Ligue 1':{cup:'Coupe de France',opp:['Marseille','Lyon','Monaco','Lille','Lens']}
+};
+const CAREERS=[
+ {club:'Ajax',league:'Eredivisie',season:'25/26'},
+ {club:'Arsenal',league:'Premier League',season:'25/26'},
+ {club:'Bayern München',league:'Bundesliga',season:'25/26'},
+ {club:'FC Barcelona',league:'La Liga',season:'24/25'},
+ {club:'Inter Milan',league:'Serie A',season:'25/26'},
+ {club:'Paris SG',league:'Ligue 1',season:'25/26'}
+];
+let actief=0;
+function career(){return CAREERS[actief];}
+function MY(){return career().club;}
+
 const COMPS=[
- {name:'Eredivisie',sub:'Competitie'},{name:'KNVB Beker',sub:'Beker'},
- {name:'Champions League',sub:'Europees'},{name:'Europa League',sub:'Europees'},
- {name:'Johan Cruijff Schaal',sub:'Supercup'},{name:'Promotie play-offs',sub:'Play-offs'}
+ {name:'Eredivisie',sub:'Competitie'},{name:'Premier League',sub:'Competitie'},
+ {name:'Bundesliga',sub:'Competitie'},{name:'La Liga',sub:'Competitie'},
+ {name:'Serie A',sub:'Competitie'},{name:'Ligue 1',sub:'Competitie'},
+ {name:'KNVB Beker',sub:'Beker'},{name:'Champions League',sub:'Europees'},
+ {name:'Europa League',sub:'Europees'},{name:'Conference League',sub:'Europees'},
+ {name:'Promotie play-offs',sub:'Play-offs'}
 ];
-const MATCHES=[
- {comp:'Eredivisie',home:'Ajax',away:'AZ',hs:1,as:1,type:'Regulier'},
- {comp:'Eredivisie',home:'Ajax',away:'AVS Futebol SAD',hs:0,as:2,type:'Regulier'},
- {comp:'Champions League',home:'1. FC Magdeburg',away:'Ajax',hs:1,as:3,type:'Regulier',agg:'Totaal 4-2 · Doorgaan',aggT:'door'},
- {comp:'KNVB Beker',home:'Ajax',away:'1. FC Heidenheim',hs:2,as:2,type:"Na penalty's",pens:'4-3'},
- {comp:'Eredivisie',home:'Feyenoord',away:'Ajax',hs:0,as:1,type:'Regulier'},
- {comp:'Eredivisie',home:'Ajax',away:'PSV',hs:3,as:0,type:'Regulier'}
-];
+/* Wedstrijden horen bij de gekozen career, zodat het thema klopt */
+function matches(){
+  const c=career(), L=LANDEN[c.league], o=L.opp, mij=c.club;
+  return [
+   {comp:c.league,home:mij,away:o[0],hs:1,as:1,type:'Regulier'},
+   {comp:c.league,home:mij,away:o[1],hs:0,as:2,type:'Regulier'},
+   {comp:'Champions League',home:o[2],away:mij,hs:1,as:3,type:'Regulier',
+    agg:'Totaal 4-2 · Doorgaan',aggT:'door'},
+   {comp:L.cup,home:mij,away:o[3],hs:2,as:2,type:"Na penalty's",pens:'4-3'},
+   {comp:'Europa League',home:o[4],away:mij,hs:0,as:1,type:'Regulier'},
+   {comp:c.league,home:mij,away:o[2],hs:3,as:0,type:'Regulier'}
+  ];
+}
 const SPELERS=[
  {n:'Verbruggen',p:'GK',r:84,x:50,y:90},{n:'Wijndal',p:'LB',r:79,x:16,y:74},
  {n:'Hato',p:'CB',r:82,x:38,y:78},{n:'Baas',p:'CB',r:80,x:62,y:78},{n:'Rensch',p:'RB',r:78,x:84,y:74},
@@ -355,6 +429,11 @@ function initials(n){
   return b.length===1?b[0].toUpperCase().slice(0,3):b.map(x=>x[0]).join('').toUpperCase().slice(0,3);
 }
 function team(n){return TEAMS.find(t=>t.name===n)||{name:n,color:'#3A3A3C'};}
+function pasThemaToe(){
+  const t=thema(career().league);
+  document.documentElement.style.setProperty('--accent',t.a);
+  document.documentElement.style.setProperty('--tint',t.t);
+}
 function crest(n,cls,klik){
   const t=team(n),c=cls||'crest',oc=klik?' onclick="'+klik+'"':'';
   if(teamLogos[n])return '<div class="'+c+' has-logo"'+oc+'><img src="'+teamLogos[n]+'" alt=""></div>';
@@ -366,35 +445,40 @@ function kop(t,terug){
     '<h1>'+esc(t)+'</h1><div class="spacer"></div></div>';
 }
 function careerBar(){
-  return '<div class="career-bar">'+
-    '<div class="career-chip active">'+crest('Ajax')+'<div><b>Ajax</b><br><span>Seizoen 25/26</span></div></div>'+
-    '<div class="career-chip">'+crest('FC Twente')+'<div><b>Twente</b><br><span>Seizoen 24/25</span></div></div>'+
-  '</div>';
+  return '<div class="career-bar">'+CAREERS.map((c,i)=>
+    '<div class="career-chip'+(i===actief?' active':'')+'" onclick="kiesCareer('+i+')">'+
+    crest(c.club)+'<div><b>'+esc(c.club)+'</b><br><span>'+esc(c.league)+' · '+esc(c.season)+'</span></div></div>'
+  ).join('')+'</div>';
 }
+function kiesCareer(i){actief=i;pasThemaToe();teken();}
 
 /* ================= schermen ================= */
 let filterComp='Alles';
 function schermWedstrijden(){
-  const comps=['Alles'].concat(COMPS.map(c=>c.name));
-  const lijst=MATCHES.filter(m=>filterComp==='Alles'||m.comp===filterComp);
+  const alle=matches();
+  const comps=['Alles'].concat([...new Set(alle.map(m=>m.comp))]);
+  const lijst=alle.filter(m=>filterComp==='Alles'||m.comp===filterComp);
   return kop('Wedstrijden')+careerBar()+
-    '<div class="chips">'+comps.map(c=>'<button class="chip'+(c===filterComp?' active':'')+
-      '" onclick="filterComp=\''+jq(c)+'\';teken()">'+esc(c)+'</button>').join('')+'</div>'+
+    '<div class="chips">'+comps.map(c=>{
+      const t=thema(c),act=c===filterComp;
+      return '<button class="chip'+(act?' active':'')+'" style="'+
+        (act&&c!=='Alles'?'background:'+t.a+';color:#0A0A0C':'')+'" onclick="filterComp=\''+jq(c)+
+        '\';teken()">'+esc(c)+'</button>';}).join('')+'</div>'+
     (lijst.length?lijst.map(matchKaart).join(''):'<div class="empty">Geen wedstrijden</div>');
 }
 function uitslag(m){
-  const th=m.home===MY_TEAM,ta=m.away===MY_TEAM;
+  const th=m.home===MY(),ta=m.away===MY();
   if(!th&&!ta)return null;
   const my=th?m.hs:m.as,zij=th?m.as:m.hs;
   return my>zij?'win':my<zij?'loss':'draw';
 }
 function matchKaart(m){
-  const r=uitslag(m),th=m.home===MY_TEAM;
+  const r=uitslag(m),th=m.home===MY();
   const kl=r==='win'?'var(--win)':r==='loss'?'var(--loss)':'var(--draw)';
   const hk=r?(th?kl:'var(--draw)'):'var(--draw)', ak=r?(th?'var(--draw)':kl):'var(--draw)';
-  const lg=compLogos[m.comp];
-  return '<div class="match">'+
-    '<div class="match-comp">'+esc(m.comp)+'</div>'+
+  const lg=compLogos[m.comp], th2=thema(m.comp), eu=EUROPEES.includes(m.comp);
+  return '<div class="match" style="--ca:'+th2.a+(eu?';background:linear-gradient(180deg,'+th2.t+' 0%,var(--card) 55%)':'')+'">'+
+    '<div class="match-comp" style="color:'+th2.a+'">'+esc(m.comp)+'</div>'+
     '<div class="match-row">'+
       '<div class="side">'+crest(m.home)+'<div class="side-name">'+esc(m.home)+'</div></div>'+
       '<div class="score"><div class="score-line">'+
@@ -519,8 +603,8 @@ function schermVrienden(){
 function schermClubs(){
   const q=(window.__q||'').trim().toLowerCase();
   const m=t=>!q||t.name.toLowerCase().includes(q);
-  const mij=TEAMS.find(t=>t.name===MY_TEAM);
-  const rest=TEAMS.filter(t=>t.name!==MY_TEAM&&m(t)).sort((a,b)=>a.name.localeCompare(b.name,'nl'));
+  const mij=TEAMS.find(t=>t.name===MY());
+  const rest=TEAMS.filter(t=>t.name!==MY()&&m(t)).sort((a,b)=>a.name.localeCompare(b.name,'nl'));
   const kl=n=>"kiesClubLogo('"+jq(n)+"');event.stopPropagation()";
   const ws=n=>"wisClubLogo('"+jq(n)+"');event.stopPropagation()";
   let h=kop('Kies een club','meer')+
@@ -558,7 +642,25 @@ function schermComps(){
       '</div>';}).join('');
 }
 
+function schermThema(){
+  const nu=career().league;
+  const rij=(naam,soort)=>{const t=thema(naam);
+    return '<div class="theme-row"><span class="swatch" style="background:'+t.a+'"></span>'+
+      '<span class="tn2">'+esc(naam)+'<div class="lsub">'+soort+'</div></span>'+
+      (naam===nu?'<span class="nu">NU ACTIEF</span>':'')+'</div>';};
+  return kop('Thema','meer')+
+    '<p class="hint">De app kleurt mee met de competitie waarin je speelt. Wissel bovenaan van career en alles verandert: knoppen, gloed en filters. Europese wedstrijden houden altijd hun eigen kleur, ook binnen je eigen competitie.</p>'+
+    '<div class="section-label">Competities</div>'+
+    '<div class="list">'+Object.keys(LANDEN).map(l=>rij(l,'Competitie')).join('')+'</div>'+
+    '<div class="section-label">Europees</div>'+
+    '<div class="list">'+EUROPEES.map(e=>rij(e,'Europees toernooi')).join('')+'</div>'+
+    '<div class="section-label">Bekers</div>'+
+    '<div class="list">'+['KNVB Beker','FA Cup','DFB-Pokal','Copa del Rey','Coppa Italia','Coupe de France']
+      .map(c=>rij(c,'Beker')).join('')+'</div>';
+}
+
 const MEER=[
+ {t:'Thema',i:'fa-palette',s:'kleuren per competitie',v:'thema'},
  {t:'Statistieken',i:'fa-chart-simple',s:'wedstrijden, goals, reeksen',v:'stats'},
  {t:'Transfers',i:'fa-right-left',s:'in- en uitgaand',v:'transfers'},
  {t:'Seizoensamenvatting',i:'fa-book',s:'alles van dit seizoen',v:'review'},
@@ -578,10 +680,10 @@ function schermMeer(){
 /* ================= navigatie ================= */
 const SCHERMEN={wedstrijden:schermWedstrijden,toevoegen:schermToevoegen,klassement:schermKlassement,
   opstelling:schermOpstelling,meer:schermMeer,stats:schermStats,transfers:schermTransfers,
-  review:schermReview,badges:schermBadges,vrienden:schermVrienden,clubs:schermClubs,comps:schermComps};
+  review:schermReview,badges:schermBadges,vrienden:schermVrienden,clubs:schermClubs,comps:schermComps,thema:schermThema};
 const TABS={wedstrijden:'wedstrijden',toevoegen:'wedstrijden',klassement:'klassement',
   opstelling:'opstelling',meer:'meer',stats:'meer',transfers:'meer',review:'meer',
-  badges:'meer',vrienden:'meer',clubs:'meer',comps:'meer'};
+  badges:'meer',vrienden:'meer',clubs:'meer',comps:'meer',thema:'meer'};
 let huidig='wedstrijden';
 function ga(v){huidig=v;window.scrollTo(0,0);teken();}
 function teken(){
@@ -589,7 +691,7 @@ function teken(){
   document.querySelectorAll('.tab').forEach(b=>b.classList.toggle('active',b.dataset.t===TABS[huidig]));
   document.getElementById('fab').style.display=huidig==='wedstrijden'?'block':'none';
 }
-teken();
+pasThemaToe();teken();
 </script>
 </body>
 </html>
