@@ -170,6 +170,28 @@ input[type="file"]{font-size:13px;color:var(--muted)}
 .reaction-who{font-size:11px;color:#5A5A5E;margin-top:5px}
 .reaction-add{border-style:dashed;border-color:var(--line);opacity:.75;color:var(--muted)}
 
+/* ---- meer-overzicht ---- */
+.lrow{display:flex;align-items:center;gap:13px;padding:15px 16px;cursor:pointer;font-size:16px}
+.lrow+.lrow{border-top:1px solid var(--line)}
+.lrow:active{background:var(--card-2)}
+.lrow>i:first-child{width:24px;text-align:center;color:var(--accent);font-size:16px;flex-shrink:0}
+.lrow>span{flex:1;min-width:0}
+.lrow .chev{color:#5A5A5E;font-size:13px;flex-shrink:0}
+
+/* ---- competitielogo's ---- */
+.comp-row{background:var(--card);border-radius:18px;padding:13px 15px;margin-bottom:10px;
+  display:flex;align-items:center;gap:13px}
+.comp-logo{width:48px;height:48px;border-radius:14px;background:var(--card-2);flex-shrink:0;
+  display:flex;align-items:center;justify-content:center;overflow:hidden;cursor:pointer}
+.comp-logo.has-logo{background:none;border-radius:0;overflow:visible}
+.comp-logo img{width:100%;height:100%;object-fit:contain}
+.comp-logo .ph{color:#5A5A5E;font-size:16px}
+.comp-info{flex:1;min-width:0}
+.comp-name{font-size:15px;font-weight:600}
+.comp-sub{font-size:12px;color:var(--muted);margin-top:2px}
+.comp-badge{display:flex;justify-content:center;margin-top:12px}
+.comp-badge img{width:34px;height:34px;object-fit:contain}
+
 /* ---- statistieken ---- */
 .stats-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:14px}
 @media(min-width:600px){.stats-grid{grid-template-columns:repeat(auto-fit,minmax(140px,1fr))}}
@@ -372,7 +394,7 @@ input[type="file"]{font-size:13px;color:var(--muted)}
         <button class="tabbtn" data-tab="matches" onclick="switchTab('matches')"><i class="fa-solid fa-futbol"></i>Wedstrijden</button>
         <button class="tabbtn" data-tab="standings" onclick="switchTab('standings')"><i class="fa-solid fa-trophy"></i>Klassement</button>
         <button class="tabbtn" data-tab="squad" onclick="switchTab('squad')"><i class="fa-solid fa-users"></i>Opstelling</button>
-        <button class="tabbtn" id="tabbtn-meer" onclick="toggleNav()"><i class="fa-solid fa-ellipsis"></i>Meer</button>
+        <button class="tabbtn" id="tabbtn-meer" onclick="switchTab('meer')"><i class="fa-solid fa-ellipsis"></i>Meer</button>
       </div>
     </div>
 
@@ -695,6 +717,20 @@ input[type="file"]{font-size:13px;color:var(--muted)}
     </div>
 
     <!-- Teams -->
+    <!-- Meer -->
+    <div class="panel" id="panel-meer">
+      <div id="meer-lijst"></div>
+    </div>
+
+    <!-- Competities -->
+    <div class="panel" id="panel-comps">
+      <div class="card">
+        <h3><i class="fa-solid fa-trophy"></i> Competitielogo's</h3>
+        <p style="font-size:13px;color:var(--muted);margin:0">Voeg per competitie een logo toe, net als bij teams. Het logo verschijnt daarna op je wedstrijdkaarten.</p>
+      </div>
+      <div id="comps-lijst"></div>
+    </div>
+
     <div class="panel" id="panel-teams">
       <div class="card edit-only">
         <h3><i class="fa-solid fa-shield-halved"></i> Team toevoegen</h3>
@@ -1567,6 +1603,7 @@ function buildMatchCard(m,allMatches){
       </div>
       <div class="match-meta"><div class="match-comp">${esc(m.comp)}</div><div>${esc(m.round||('SD '+m.day))} | ${esc(m.season)}</div></div>
     </div>
+    ${compLogo(m.comp)?`<div class="comp-badge"><img src="${esc(compLogo(m.comp))}" alt=""></div>`:''}
     ${aggHtml}
     ${m.note?`<div class="match-note"><i class="fa-solid fa-comment" style="margin-right:6px"></i>${esc(m.note)}</div>`:''}
     <div class="match-expand">
@@ -1785,6 +1822,7 @@ function readSnapshot(){
 }
 function stripPhotos(d){
   const c=JSON.parse(JSON.stringify(d));
+  if(c.compLogos)c.compLogos={};
   (c.teams||[]).forEach(t=>{if(t.logo&&t.logo.indexOf('data:')===0)t.logo='';});
   (c.careers||[]).forEach(cr=>{
     (cr.players||[]).forEach(p=>{p.photo='';});
@@ -1931,6 +1969,9 @@ async function optimizeImages(maxDim,quality){
   const jobs=[];
   (data.teams||[]).forEach(t=>{
     jobs.push(reencodeDataUrl(t.logo,maxDim,quality).then(v=>{if(v){t.logo=v;count++;}}));
+  });
+  Object.keys(data.compLogos||{}).forEach(k=>{
+    jobs.push(reencodeDataUrl(data.compLogos[k],maxDim,quality).then(v=>{if(v){data.compLogos[k]=v;count++;}}));
   });
   (data.careers||[]).forEach(c=>{
     (c.players||[]).forEach(p=>{
@@ -2174,6 +2215,7 @@ const NAV_GROUPS = [
   ]},
   { label:'Beheer', items:[
     {tab:'teams',icon:'fa-shield-halved',label:'Teams beheren'},
+    {tab:'comps',icon:'fa-trophy',label:'Competitielogo\'s'},
   ]},
 ];
 const NAV_ITEMS = NAV_GROUPS.flatMap(g=>g.items);
@@ -2185,6 +2227,74 @@ function renderNav(){
     `<div class="nav-group-label">${g.label}</div>` +
     g.items.map(n => `<div class="nav-item ${n.tab===currentTab?'active':''}" onclick="switchTab('${n.tab}')"><i class="fa-solid ${n.icon}"></i>${n.label}</div>`).join('')
   ).join('');
+}
+
+function renderMeer(){
+  const el=document.getElementById('meer-lijst');
+  if(!el)return;
+  el.innerHTML=NAV_GROUPS.map(g=>
+    '<div class="nav-group-label">'+esc(g.label)+'</div>'+
+    '<div class="lb-table" style="margin-bottom:12px">'+
+      g.items.map(n=>'<div class="lrow" onclick="switchTab(\''+n.tab+'\')">'+
+        '<i class="fa-solid '+n.icon+'"></i><span>'+esc(n.label)+'</span>'+
+        '<i class="fa-solid fa-chevron-right chev"></i></div>').join('')+
+    '</div>').join('');
+}
+
+/* ---- competitielogo's ---- */
+function compLogo(naam){return (data.compLogos&&data.compLogos[naam])||'';}
+function renderCompLogos(){
+  const el=document.getElementById('comps-lijst');
+  if(!el)return;
+  if(!career){el.innerHTML='<div class="no-data">Maak eerst een career mode aan</div>';return;}
+  const gebruikt=[...new Set((career.matches||[]).map(m=>m.comp))];
+  const lijst=[...new Set(getLeague().comps.concat(gebruikt))];
+  el.innerHTML=lijst.map(c=>{
+    const lg=compLogo(c);
+    return '<div class="comp-row">'+
+      '<div class="comp-logo'+(lg?' has-logo':'')+'" onclick="kiesCompLogo(\''+jsAttr(c)+'\')">'+
+        (lg?'<img src="'+esc(lg)+'" alt="">':'<i class="fa-solid fa-image ph"></i>')+'</div>'+
+      '<div class="comp-info"><div class="comp-name">'+esc(c)+'</div>'+
+        '<div class="comp-sub">'+(lg?'logo toegevoegd':'nog geen logo')+'</div></div>'+
+      (isViewingFriend?'':(lg
+        ? '<button class="btn btn-outline btn-sm" onclick="wisCompLogo(\''+jsAttr(c)+'\')">Wissen</button>'
+        : '<button class="btn btn-primary btn-sm" onclick="kiesCompLogo(\''+jsAttr(c)+'\')">Logo</button>'))+
+    '</div>';
+  }).join('');
+}
+function kiesCompLogo(naam){
+  if(isViewingFriend)return;
+  if(!dataLoaded){alert('Je gegevens zijn niet geladen. Probeer het opnieuw met internet.');return;}
+  const input=document.createElement('input');
+  input.type='file';input.accept='image/*';
+  input.onchange=function(e){
+    const f=e.target.files[0];if(!f)return;
+    const r=new FileReader();
+    r.onload=function(ev){
+      knipLogoRand(ev.target.result,function(bijgesneden){
+        const bron=bijgesneden||ev.target.result;
+        // verkleinen naar maximaal 96px, als PNG zodat doorzichtigheid blijft
+        const img=new Image();
+        img.onload=function(){
+          const sc=Math.min(1,96/Math.max(img.width,img.height));
+          const w=Math.max(1,Math.round(img.width*sc)),hh=Math.max(1,Math.round(img.height*sc));
+          const c=document.createElement('canvas');c.width=w;c.height=hh;
+          c.getContext('2d').drawImage(img,0,0,w,hh);
+          if(!data.compLogos)data.compLogos={};
+          data.compLogos[naam]=c.toDataURL('image/png');
+          save();renderCompLogos();renderMatches();renderFavorites();
+        };
+        img.src=bron;
+      });
+    };
+    r.readAsDataURL(f);
+  };
+  input.click();
+}
+function wisCompLogo(naam){
+  if(isViewingFriend||!data.compLogos)return;
+  delete data.compLogos[naam];
+  save();renderCompLogos();renderMatches();renderFavorites();
 }
 
 function markeerTabbalk(){
@@ -2203,8 +2313,10 @@ function toggleNav(){
 function switchTab(tab){
   currentTab = tab;
   const item = NAV_ITEMS.find(n=>n.tab===tab);
-  document.getElementById('nav-current-icon').className = 'fa-solid ' + item.icon + ' nav-icon';
-  document.getElementById('nav-current-label').textContent = item.label;
+  if(item){
+    document.getElementById('nav-current-icon').className = 'fa-solid ' + item.icon + ' nav-icon';
+    document.getElementById('nav-current-label').textContent = item.label;
+  }
   document.getElementById('nav-dropdown').classList.remove('show');
   document.getElementById('nav-current').classList.remove('open');
   document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
@@ -2225,6 +2337,8 @@ function switchTab(tab){
   if(tab==='season-review'){populateReviewSeasons();renderSeasonReview();}
   if(tab==='h2h')loadH2HPlayers();
   if(tab==='compare'){populateCompareSelects();populateCompareFilters();renderCompare();}
+  if(tab==='meer')renderMeer();
+  if(tab==='comps')renderCompLogos();
 }
 
 document.addEventListener('click',function(e){
