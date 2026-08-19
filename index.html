@@ -216,6 +216,47 @@ input[type="file"]{font-size:13px;color:var(--muted)}
 .tg-logos{display:flex;gap:10px;flex-wrap:wrap}
 .tg-logo{display:flex}
 .tg-leeg{font-size:13px;color:#5A5A5E}
+.tg-klik{cursor:pointer;border-radius:12px}
+.tg-klik:active{opacity:.6}
+.tg-logo{display:flex;cursor:pointer;border-radius:12px}
+.tg-logo:active{transform:scale(.9)}
+.tg-telling{font-size:12.5px;color:var(--muted);margin-bottom:9px}
+
+/* ---- alle tegenstanders ---- */
+.chips{display:flex;gap:7px;overflow-x:auto;margin-bottom:10px;padding-bottom:2px;
+  scrollbar-width:none;-ms-overflow-style:none}
+.chips::-webkit-scrollbar{display:none}
+.chip{background:var(--card);border:1px solid var(--line);color:var(--muted);border-radius:20px;
+  padding:7px 14px;font-size:12.5px;font-weight:600;white-space:nowrap;cursor:pointer;font-family:inherit}
+.chip.active{background:var(--accent);border-color:var(--accent);color:#fff}
+.tgr{display:flex;align-items:center;gap:11px;background:var(--card);border-radius:16px;
+  padding:11px 13px;margin-bottom:8px;cursor:pointer}
+.tgr:active{opacity:.7}
+.tgr-naam{font-size:14.5px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tgr-sub{font-size:11.5px;color:var(--muted);margin-top:2px}
+.wgv{display:flex;gap:4px;flex-shrink:0}
+.wgv span{min-width:27px;text-align:center;border-radius:8px;padding:3px 0;font-size:12px;font-weight:700}
+.wgv .w{background:rgba(76,175,80,.16);color:#4CAF50}
+.wgv .g{background:rgba(255,152,0,.16);color:#FF9800}
+.wgv .v{background:rgba(244,67,54,.16);color:#f44336}
+
+/* ---- tegenstander-detail ---- */
+.td-kop{display:flex;align-items:center;gap:12px;margin-bottom:14px}
+.td-naam{font-size:18px;font-weight:700;line-height:1.2}
+.td-sub{font-size:12.5px;color:var(--muted);margin-top:2px}
+.td-bal{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.td-bal>div{background:var(--card-2);border-radius:14px;padding:10px 6px;text-align:center}
+.td-bal b{display:block;font-size:22px;font-weight:700;line-height:1.1}
+.td-bal span{font-size:11px;color:var(--muted)}
+.td-goals{text-align:center;font-size:12.5px;color:var(--muted);margin:10px 0 12px}
+.td-ms{max-height:42vh;overflow-y:auto;display:flex;flex-direction:column;gap:7px}
+.td-m{background:var(--card-2);border-radius:14px;padding:9px 12px;border-left:3px solid var(--line)}
+.td-u{display:flex;align-items:center;gap:9px}
+.td-u b{flex-shrink:0;font-size:15px;font-weight:700}
+.td-t{flex:1;min-width:0;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.td-t.mij{font-weight:700;color:#fff}
+.td-p{font-size:10.5px;color:var(--muted);text-align:center;margin-top:2px}
+.td-s{font-size:11.5px;color:var(--muted);margin-top:4px}
 
 /* ---- reacties ---- */
 .reaction-open{display:flex;align-items:center;gap:7px;background:var(--card-2);border:none;
@@ -612,6 +653,27 @@ input[type="file"]{font-size:13px;color:var(--muted)}
       <div id="recent-results"></div>
       <h3 style="margin:20px 0 12px;font-size:17px">Tegenstanders</h3>
       <div id="tegenstanders"></div>
+    </div>
+
+    <!-- Alle tegenstanders -->
+    <div class="panel" id="panel-tegen">
+      <div class="filter-row">
+        <select id="tegen-season" onchange="renderAlleTegenstanders()"><option value="">Alle seizoenen</option></select>
+        <select id="tegen-comp" onchange="renderAlleTegenstanders()"><option value="">Alle competities</option></select>
+      </div>
+      <input type="text" class="search-input" id="tegen-zoek" placeholder="Zoek een club..." oninput="renderAlleTegenstanders()" style="width:100%;margin-bottom:10px">
+      <div class="chips" id="tegen-chips"></div>
+      <div class="filter-row">
+        <select id="tegen-sort" onchange="renderAlleTegenstanders()">
+          <option value="n">Meeste wedstrijden</option>
+          <option value="naam">Naam (A-Z)</option>
+          <option value="w">Vaakst gewonnen</option>
+          <option value="v">Vaakst verloren</option>
+          <option value="voor">Meeste goals gescoord</option>
+          <option value="tegen">Meeste goals tegen</option>
+        </select>
+      </div>
+      <div id="tegen-lijst"></div>
     </div>
 
     <!-- Opstelling -->
@@ -1510,8 +1572,8 @@ function deleteCareer(id){if(isViewingFriend)return;if(!confirm('Career mode ver
 function populateCareerModal(){const el=document.getElementById('cm-team');const sorted=[...data.teams].sort((a,b)=>a.name.localeCompare(b.name));el.innerHTML=sorted.map(t=>`<option>${esc(t.name)}</option>`).join('');}
 function saveCareer(){const name=document.getElementById('cm-name').value.trim();const team=document.getElementById('cm-team').value;const country=document.getElementById('cm-country').value;if(!name)return alert('Vul een naam in');const c={id:'c'+Date.now(),name,team,country,seasons:['25/26'],matches:[],standings:{},players:[],formation:'4-3-3',ratings:{}};data.careers.push(c);data.activeCareerId=c.id;career=c;save();closeModal('career-modal');document.getElementById('cm-name').value='';applyTheme();renderCareerBar();refreshAll();}
 
-function populateSeasons(){if(!career)return;['match-season','filter-season','standing-season','view-standing-season','stats-season','prog-season','tf-season','tf-filter-season'].forEach(id=>{const el=document.getElementById(id);if(!el)return;const val=el.value;const isFilter=id.startsWith('filter')||id.startsWith('view')||id.startsWith('stats')||id==='tf-filter-season';el.innerHTML=isFilter?'<option value="">Alle seizoenen</option>':'';career.seasons.forEach(s=>el.innerHTML+=`<option>${s}</option>`);if(val&&career.seasons.includes(val)){el.value=val;}else if(!isFilter&&career.seasons.length){el.value=career.seasons[career.seasons.length-1];}});}
-function populateComps(){const league=getLeague();['match-comp','filter-comp','stats-comp'].forEach(id=>{const el=document.getElementById(id);if(!el)return;const val=el.value;const isFilter=id.startsWith('filter')||id.startsWith('stats');el.innerHTML=isFilter?'<option value="">Alle competities</option>':'';league.comps.forEach(c=>el.innerHTML+=`<option>${c}</option>`);if(val)el.value=val;});}
+function populateSeasons(){if(!career)return;['match-season','filter-season','standing-season','view-standing-season','stats-season','tegen-season','prog-season','tf-season','tf-filter-season'].forEach(id=>{const el=document.getElementById(id);if(!el)return;const val=el.value;const isFilter=id.startsWith('filter')||id.startsWith('view')||id.startsWith('stats')||id.startsWith('tegen')||id==='tf-filter-season';el.innerHTML=isFilter?'<option value="">Alle seizoenen</option>':'';career.seasons.forEach(s=>el.innerHTML+=`<option>${s}</option>`);if(val&&career.seasons.includes(val)){el.value=val;}else if(!isFilter&&career.seasons.length){el.value=career.seasons[career.seasons.length-1];}});}
+function populateComps(){const league=getLeague();['match-comp','filter-comp','stats-comp','tegen-comp'].forEach(id=>{const el=document.getElementById(id);if(!el)return;const val=el.value;const isFilter=id.startsWith('filter')||id.startsWith('stats')||id.startsWith('tegen');el.innerHTML=isFilter?'<option value="">Alle competities</option>':'';((league||{}).comps||[]).forEach(c=>el.innerHTML+=`<option>${c}</option>`);if(val)el.value=val;});}
 function populateTeamSelects(){['match-home','match-away'].forEach(id=>{const el=document.getElementById(id);if(!el)return;const val=el.value;if(!val||!data.teams.some(t=>t.name===val)){el.value=career?career.team:(data.teams[0]?data.teams[0].name:'');}updateTeamPickBtn(id);});}
 
 function updateTeamPickBtn(id){
@@ -1789,16 +1851,7 @@ function posClass(val){if(val==='Winnaar')return'gold';if(val==='Finalist'||val=
 function trophyDisplay(t,val){if(!val||val==='Niet deelgenomen')return{text:'n.v.t.',cls:'none'};if(t.type==='pos')return{text:'#'+val,cls:val==='1'?'gold':val==='2'?'silver':val==='3'?'bronze':'gray'};return{text:val,cls:posClass(val)};}
 function renderStandings(){const el=document.getElementById('standings-grid');if(!career){el.innerHTML='<div class="no-data">Maak eerst een career mode aan</div>';return;}const season=document.getElementById('view-standing-season').value;const league=getLeague();const seasonsToShow=season?[season]:career.seasons;let html='';seasonsToShow.forEach(s=>{const st=career.standings[s];if(!st)return;html+=`<div style="grid-column:1/-1;font-size:16px;font-weight:600;margin-top:12px;color:var(--accent)">${esc(s)}</div>`;html+=league.trophies.map(t=>{const val=st[t.id];const pts=st[t.id+'_pts'];const{text,cls}=trophyDisplay(t,val);const ptsHtml=pts?`<div style="font-size:13px;color:#888;margin-top:4px">${pts} punten</div>`:'';return`<div class="standing-card"><h4>${t.label}</h4><div class="position ${cls}">${text}</div>${ptsHtml}</div>`;}).join('');});if(!html)html='<div class="no-data">Nog geen klassementen opgeslagen</div>';el.innerHTML=html;}
 
-function renderTegenstanders(){
-  const el=document.getElementById('tegenstanders');
-  if(!el)return;
-  if(!career){el.innerHTML='';return;}
-  const season=document.getElementById('stats-season')?document.getElementById('stats-season').value:'';
-  const comp=document.getElementById('stats-comp')?document.getElementById('stats-comp').value:'';
-  let ms=(career.matches||[]).filter(m=>m.home===career.team||m.away===career.team);
-  if(season)ms=ms.filter(m=>m.season===season);
-  if(comp)ms=ms.filter(m=>m.comp===comp);
-  if(!ms.length){el.innerHTML='<div class="no-data">Nog geen wedstrijden</div>';return;}
+function tegenstanderLijst(ms){
   const per={};
   ms.forEach(m=>{
     const thuis=m.home===career.team;
@@ -1810,26 +1863,116 @@ function renderTegenstanders(){
     const u=matchOutcome(m,career.team);
     if(u==='win')p.w++;else if(u==='loss')p.v++;else p.g++;
   });
-  const alle=Object.values(per);
+  return Object.values(per);
+}
+
+function renderTegenstanders(){
+  const el=document.getElementById('tegenstanders');
+  if(!el)return;
+  if(!career){el.innerHTML='';return;}
+  const season=document.getElementById('stats-season')?document.getElementById('stats-season').value:'';
+  const comp=document.getElementById('stats-comp')?document.getElementById('stats-comp').value:'';
+  let ms=(career.matches||[]).filter(m=>m.home===career.team||m.away===career.team);
+  if(season)ms=ms.filter(m=>m.season===season);
+  if(comp)ms=ms.filter(m=>m.comp===comp);
+  if(!ms.length){el.innerHTML='<div class="no-data">Nog geen wedstrijden</div>';return;}
+  const alle=tegenstanderLijst(ms);
   const meesteVoor=alle.slice().sort((a,b)=>b.voor-a.voor)[0];
   const meesteTegen=alle.slice().sort((a,b)=>b.tegen-a.tegen)[0];
   const ongeslagen=alle.filter(p=>p.v===0).sort((a,b)=>b.n-a.n).slice(0,8);
   const nooitVerslagen=alle.filter(p=>p.w===0).sort((a,b)=>b.n-a.n).slice(0,8);
   const rijTop=(label,p,waarde)=>p&&waarde>0?`<div class="tg-rij">
       <div class="tg-label">${label}</div>
-      <div class="tg-inhoud">${teamLogo(p.naam,34)}<span class="tg-naam">${esc(p.naam)}</span>
-        <span class="tg-getal">${waarde}</span></div></div>`:'';
-  const rijLijst=(label,lijst,leeg)=>`<div class="tg-rij">
-      <div class="tg-label">${label}</div>
+      <div class="tg-inhoud tg-klik" onclick="openTegenstander('${jsAttr(p.naam)}')">${teamLogo(p.naam,34)}<span class="tg-naam">${esc(p.naam)}</span>
+        <span class="tg-getal">${waarde}</span><i class="fa-solid fa-chevron-right chev"></i></div></div>`:'';
+  const rijLijst=(label,lijst,leeg,extra)=>`<div class="tg-rij">
+      <div class="tg-label">${label}${extra>0?` <span style="color:var(--accent)">+${extra}</span>`:''}</div>
       ${lijst.length?`<div class="tg-logos">${lijst.map(p=>
-        `<span class="tg-logo" title="${esc(p.naam)} (${p.n})">${teamLogo(p.naam,34)}</span>`).join('')}</div>`
+        `<span class="tg-logo" title="${esc(p.naam)} (${p.n})" onclick="openTegenstander('${jsAttr(p.naam)}')">${teamLogo(p.naam,34)}</span>`).join('')}</div>`
         :`<div class="tg-leeg">${leeg}</div>`}</div>`;
   el.innerHTML='<div class="card" style="margin-bottom:0">'+
     rijTop('Meeste doelpunten gescoord tegen',meesteVoor,meesteVoor?meesteVoor.voor:0)+
     rijTop('Meeste doelpunten tegen ontvangen van',meesteTegen,meesteTegen?meesteTegen.tegen:0)+
-    rijLijst('Ongeslagen tegen',ongeslagen,'Tegen iedereen wel eens verloren')+
-    rijLijst('Nooit verslagen',nooitVerslagen,'Iedereen wel eens verslagen')+
+    rijLijst('Ongeslagen tegen',ongeslagen,'Tegen iedereen wel eens verloren',alle.filter(p=>p.v===0).length-ongeslagen.length)+
+    rijLijst('Nooit verslagen',nooitVerslagen,'Iedereen wel eens verslagen',alle.filter(p=>p.w===0).length-nooitVerslagen.length)+
+    `<div class="tg-rij"><button class="btn btn-outline" style="width:100%" onclick="switchTab('tegen')">
+      <i class="fa-solid fa-list"></i> Alle ${alle.length} tegenstanders bekijken</button></div>`+
   '</div>';
+}
+
+/* ---- alle tegenstanders ---- */
+const TEGEN_FILTERS=[{k:'alles',l:'Alles'},{k:'ongeslagen',l:'Nooit van verloren'},{k:'nooitgewonnen',l:'Nooit van gewonnen'}];
+let _tegenFilter='alles';
+function zetTegenFilter(k){_tegenFilter=k;renderAlleTegenstanders();}
+
+function renderAlleTegenstanders(){
+  const el=document.getElementById('tegen-lijst');
+  if(!el)return;
+  const chips=document.getElementById('tegen-chips');
+  if(chips)chips.innerHTML=TEGEN_FILTERS.map(f=>
+    `<button class="chip${_tegenFilter===f.k?' active':''}" onclick="zetTegenFilter('${f.k}')">${f.l}</button>`).join('');
+  if(!career){el.innerHTML='<div class="no-data">Maak eerst een career mode aan</div>';return;}
+  const waarde=id=>{const e=document.getElementById(id);return e?e.value:'';};
+  const season=waarde('tegen-season'), comp=waarde('tegen-comp');
+  const zoek=waarde('tegen-zoek').toLowerCase().trim();
+  const sort=waarde('tegen-sort')||'n';
+  let ms=(career.matches||[]).filter(m=>m.home===career.team||m.away===career.team);
+  if(season)ms=ms.filter(m=>m.season===season);
+  if(comp)ms=ms.filter(m=>m.comp===comp);
+  let lijst=tegenstanderLijst(ms);
+  const totaal=lijst.length;
+  if(_tegenFilter==='ongeslagen')lijst=lijst.filter(p=>p.v===0);
+  if(_tegenFilter==='nooitgewonnen')lijst=lijst.filter(p=>p.w===0);
+  if(zoek)lijst=lijst.filter(p=>p.naam.toLowerCase().indexOf(zoek)>=0);
+  lijst.sort((a,b)=>sort==='naam'?a.naam.localeCompare(b.naam)
+    :((b[sort]-a[sort])||(b.n-a.n)||a.naam.localeCompare(b.naam)));
+  if(!lijst.length){el.innerHTML='<div class="no-data">'+(totaal?'Geen clubs gevonden':'Nog geen wedstrijden gespeeld')+'</div>';return;}
+  el.innerHTML=`<div class="tg-telling">${lijst.length} van ${totaal} ${totaal===1?'club':'clubs'}</div>`+
+    lijst.map(p=>`<div class="tgr" onclick="openTegenstander('${jsAttr(p.naam)}')">
+      ${teamLogo(p.naam,34)}
+      <div style="flex:1;min-width:0">
+        <div class="tgr-naam">${esc(p.naam)}</div>
+        <div class="tgr-sub">${p.n} ${p.n===1?'wedstrijd':'wedstrijden'} &middot; ${p.voor}-${p.tegen}</div>
+      </div>
+      <div class="wgv"><span class="w">${p.w}</span><span class="g">${p.g}</span><span class="v">${p.v}</span></div>
+      <i class="fa-solid fa-chevron-right chev"></i>
+    </div>`).join('');
+}
+
+function openTegenstander(naam){
+  if(!career)return;
+  let ov=document.getElementById('tegen-modal');
+  if(!ov){ov=document.createElement('div');ov.id='tegen-modal';ov.className='modal-overlay';document.body.appendChild(ov);}
+  const ms=(career.matches||[]).filter(m=>
+    (m.home===career.team&&m.away===naam)||(m.away===career.team&&m.home===naam));
+  const p=tegenstanderLijst(ms)[0]||{naam:naam,n:0,w:0,g:0,v:0,voor:0,tegen:0};
+  ov.innerHTML=`<div class="modal">
+    <div class="td-kop">${teamLogo(naam,44)}
+      <div><div class="td-naam">${esc(naam)}</div>
+        <div class="td-sub">${p.n} ${p.n===1?'wedstrijd':'wedstrijden'} gespeeld</div></div></div>
+    <div class="td-bal">
+      <div><b style="color:#4CAF50">${p.w}</b><span>Gewonnen</span></div>
+      <div><b style="color:#FF9800">${p.g}</b><span>Gelijk</span></div>
+      <div><b style="color:#f44336">${p.v}</b><span>Verloren</span></div>
+    </div>
+    <div class="td-goals">${p.voor} goals gescoord &middot; ${p.tegen} tegen</div>
+    <div class="td-ms">${ms.length?ms.map(m=>{
+      const u=matchOutcome(m,career.team);
+      const kl=u==='win'?'#4CAF50':u==='loss'?'#f44336':'#FF9800';
+      return `<div class="td-m" style="border-left-color:${kl}">
+        <div class="td-u">
+          <span class="td-t${m.home===career.team?' mij':''}">${esc(m.home)}</span>
+          <b style="color:${kl}">${m.homeScore} - ${m.awayScore}</b>
+          <span class="td-t${m.away===career.team?' mij':''}" style="text-align:right">${esc(m.away)}</span>
+        </div>
+        ${m.penalties?`<div class="td-p">n.p. ${m.penalties.home}-${m.penalties.away}</div>`:''}
+        <div class="td-s">${esc(m.comp)} &middot; ${esc(m.round||('SD '+m.day))} &middot; ${esc(m.season)}</div>
+      </div>`;}).join(''):'<div class="no-data" style="padding:14px">Geen wedstrijden</div>'}</div>
+    <div style="display:flex;justify-content:flex-end;margin-top:14px">
+      <button class="btn btn-outline" onclick="closeModal('tegen-modal')">Sluiten</button>
+    </div>
+  </div>`;
+  ov.classList.add('show');
 }
 
 function renderStats(){if(!career){document.getElementById('stats-grid').innerHTML='';document.getElementById('recent-results').innerHTML='<div class="no-data">Maak eerst een career mode aan</div>';return;}const season=document.getElementById('stats-season').value;const comp=document.getElementById('stats-comp').value;let matches=career.matches;if(season)matches=matches.filter(m=>m.season===season);if(comp)matches=matches.filter(m=>m.comp===comp);const myMatches=matches.filter(m=>m.home===career.team||m.away===career.team);let wins=0,draws=0,losses=0,gf=0,ga=0,wStreak=0,bestWStreak=0,ubStreak=0,bestUbStreak=0;myMatches.forEach(m=>{const isHome=m.home===career.team;const my=isHome?m.homeScore:m.awayScore,their=isHome?m.awayScore:m.homeScore;gf+=my;ga+=their;const outcome=matchOutcome(m,career.team);if(outcome==='win'){wins++;wStreak++;ubStreak++;if(wStreak>bestWStreak)bestWStreak=wStreak;}else if(outcome==='loss'){losses++;wStreak=0;ubStreak=0;}else{draws++;wStreak=0;ubStreak++;} if(ubStreak>bestUbStreak)bestUbStreak=ubStreak;});document.getElementById('stats-grid').innerHTML=`<div class="stat-card"><div class="value">${myMatches.length}</div><div class="label">Wedstrijden</div></div><div class="stat-card"><div class="value" style="color:#4CAF50">${wins}</div><div class="label">Gewonnen</div></div><div class="stat-card"><div class="value" style="color:#FF9800">${draws}</div><div class="label">Gelijk</div></div><div class="stat-card"><div class="value" style="color:#f44336">${losses}</div><div class="label">Verloren</div></div><div class="stat-card"><div class="value">${gf}</div><div class="label">Goals voor</div></div><div class="stat-card"><div class="value">${ga}</div><div class="label">Goals tegen</div></div><div class="stat-card"><div class="value" style="color:#4CAF50">${bestWStreak}</div><div class="label">Winstreek</div></div><div class="stat-card"><div class="value" style="color:var(--accent)">${bestUbStreak}</div><div class="label">Ongeslagen reeks</div></div><div class="stat-card"><div class="value">${myMatches.length?Math.round(wins/myMatches.length*100):0}%</div><div class="label">Win %</div></div>`;renderTegenstanders();const recent=myMatches.slice(0,5);document.getElementById('recent-results').innerHTML=recent.length?recent.map(m=>{const outcome=matchOutcome(m,career.team);const rc=outcome==='win'?'#4CAF50':outcome==='loss'?'#f44336':'#FF9800';const penHtml=m.penalties?`<div style="font-size:10px;color:#888;margin-top:1px">n.p. ${m.penalties.home}-${m.penalties.away}</div>`:'';return`<div class="match-card" style="margin-bottom:6px;cursor:default"><div class="match-top"><div class="match-teams"><div class="match-team home">${esc(m.home)}</div>${teamLogo(m.home)}<div><div class="match-score" style="color:${rc}">${m.homeScore} - ${m.awayScore}</div>${penHtml}</div>${teamLogo(m.away)}<div class="match-team away">${esc(m.away)}</div></div></div><div class="match-meta"><div class="match-comp">${esc(m.comp)}</div><div>${esc(m.round||('SD '+m.day))} | ${esc(m.season)}</div></div></div>`;}).join(''):'<div class="no-data">Geen wedstrijden</div>';}
@@ -2378,6 +2521,7 @@ const NAV_GROUPS = [
   ]},
   { label:'Inzichten', items:[
     {tab:'stats',icon:'fa-chart-simple',label:'Statistieken'},
+    {tab:'tegen',icon:'fa-shield-halved',label:'Tegenstanders'},
     {tab:'progress',icon:'fa-chart-line',label:'Progressie'},
     {tab:'compare',icon:'fa-code-compare',label:'Carrières vergelijken'},
     {tab:'season-review',icon:'fa-book',label:'Seizoensamenvatting'},
@@ -2553,6 +2697,7 @@ function switchTab(tab){
   if(tab==='meer')renderMeer();
   if(tab==='comps')renderCompLogos();
   if(tab==='compkleuren')renderCompKleuren();
+  if(tab==='tegen'){populateSeasons();populateComps();renderAlleTegenstanders();}
 }
 
 document.addEventListener('click',function(e){
