@@ -179,6 +179,13 @@ input[type="file"]{font-size:13px;color:var(--muted)}
 .lrow .chev{color:#5A5A5E;font-size:13px;flex-shrink:0}
 
 /* ---- competitielogo's ---- */
+.kleur-vak{width:48px;height:48px;border-radius:14px;flex-shrink:0;position:relative;
+  overflow:hidden;cursor:pointer;border:1px solid rgba(255,255,255,.14)}
+.kleur-vak input[type="color"]{position:absolute;inset:-4px;width:calc(100% + 8px);
+  height:calc(100% + 8px);opacity:0;cursor:pointer;padding:0;border:none;background:none}
+.nu-actief{font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;
+  color:var(--accent);background:var(--card-2);border-radius:8px;padding:2px 7px;margin-left:6px;
+  vertical-align:middle}
 .comp-row{background:var(--card);border-radius:18px;padding:13px 15px;margin-bottom:10px;
   display:flex;align-items:center;gap:13px}
 .comp-logo{width:48px;height:48px;border-radius:14px;background:var(--card-2);flex-shrink:0;
@@ -762,6 +769,15 @@ input[type="file"]{font-size:13px;color:var(--muted)}
         <p style="font-size:13px;color:var(--muted);margin:0">Voeg per competitie een logo toe, net als bij teams. Het logo verschijnt daarna op je wedstrijdkaarten.</p>
       </div>
       <div id="comps-lijst"></div>
+    </div>
+
+    <!-- Competitiekleuren -->
+    <div class="panel" id="panel-compkleuren">
+      <div class="card">
+        <h3><i class="fa-solid fa-palette"></i> Competitiekleuren</h3>
+        <p style="font-size:13px;color:var(--muted);margin:0">De app kleurt mee met de competitie waarin je speelt. Hier stel je per competitie je eigen kleur in.</p>
+      </div>
+      <div id="compkleuren-lijst"></div>
     </div>
 
     <div class="panel" id="panel-teams">
@@ -1466,7 +1482,16 @@ const THEMAS={
  'Promotie play-offs':{a:'#A78BFA',t:'rgba(108,99,255,.22)'},'Degradatie play-offs':{a:'#FF6B8A',t:'rgba(200,40,80,.24)'},
  'Vriendschappelijk':{a:'#9E9EA4',t:'rgba(120,120,130,.16)'}
 };
-function thema(c){return THEMAS[c]||{a:'#6C63FF',t:'rgba(108,99,255,.20)'};}
+function hexNaarRgba(hex,alpha){
+  const m=/^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(String(hex||''));
+  if(!m)return 'rgba(108,99,255,'+alpha+')';
+  return 'rgba('+parseInt(m[1],16)+','+parseInt(m[2],16)+','+parseInt(m[3],16)+','+alpha+')';
+}
+function thema(c){
+  const eigen=data.compKleuren&&data.compKleuren[c];
+  if(eigen)return{a:eigen,t:hexNaarRgba(eigen,.24)};
+  return THEMAS[c]||{a:'#6C63FF',t:'rgba(108,99,255,.20)'};
+}
 function hoofdCompetitie(){
   if(!career)return '';
   const tel={};
@@ -2366,6 +2391,7 @@ const NAV_GROUPS = [
   { label:'Beheer', items:[
     {tab:'teams',icon:'fa-shield-halved',label:'Teams beheren'},
     {tab:'comps',icon:'fa-trophy',label:'Competitielogo\'s'},
+    {tab:'compkleuren',icon:'fa-palette',label:'Competitiekleuren'},
   ]},
 ];
 const NAV_ITEMS = NAV_GROUPS.flatMap(g=>g.items);
@@ -2398,7 +2424,7 @@ function renderCompLogos(){
   if(!el)return;
   if(!career){el.innerHTML='<div class="no-data">Maak eerst een career mode aan</div>';return;}
   const gebruikt=[...new Set((career.matches||[]).map(m=>m.comp))];
-  const lijst=[...new Set(getLeague().comps.concat(gebruikt))];
+  const lijst=[...new Set(((getLeague()||{}).comps||[]).concat(gebruikt))];
   el.innerHTML=lijst.map(c=>{
     const lg=compLogo(c);
     return '<div class="comp-row">'+
@@ -2412,6 +2438,43 @@ function renderCompLogos(){
     '</div>';
   }).join('');
 }
+function renderCompKleuren(){
+  const el=document.getElementById('compkleuren-lijst');
+  if(!el)return;
+  if(!career){el.innerHTML='<div class="no-data">Maak eerst een career mode aan</div>';return;}
+  const gebruikt=[...new Set((career.matches||[]).map(m=>m.comp))];
+  const lijst=[...new Set(((getLeague()||{}).comps||[]).concat(gebruikt))];
+  const nu=hoofdCompetitie();
+  el.innerHTML=lijst.map(c=>{
+    const t=thema(c);
+    const eigen=!!(data.compKleuren&&data.compKleuren[c]);
+    return '<div class="comp-row">'+
+      '<label class="kleur-vak" style="background:'+esc(t.a)+'">'+
+        '<input type="color" value="'+esc(t.a)+'" oninput="voorbeeldKleur(this)" '+
+        'onchange="zetCompKleur(\''+jsAttr(c)+'\',this.value)"'+(isViewingFriend?' disabled':'')+'>'+
+      '</label>'+
+      '<div class="comp-info"><div class="comp-name">'+esc(c)+(c===nu?' <span class="nu-actief">nu actief</span>':'')+'</div>'+
+        '<div class="comp-sub">'+(eigen?'eigen kleur':'standaardkleur')+'</div></div>'+
+      (eigen&&!isViewingFriend?'<button class="btn btn-outline btn-sm" onclick="herstelCompKleur(\''+jsAttr(c)+'\')">Standaard</button>':'')+
+    '</div>';
+  }).join('');
+}
+function voorbeeldKleur(inp){
+  if(inp&&inp.parentElement)inp.parentElement.style.background=inp.value;
+}
+function zetCompKleur(naam,kleur){
+  if(isViewingFriend)return;
+  if(!dataLoaded){alert('Je gegevens zijn niet geladen. Probeer het opnieuw met internet.');return;}
+  if(!data.compKleuren)data.compKleuren={};
+  data.compKleuren[naam]=kleur;
+  save();applyTheme();renderCompKleuren();renderMatches();renderFavorites();
+}
+function herstelCompKleur(naam){
+  if(isViewingFriend||!data.compKleuren)return;
+  delete data.compKleuren[naam];
+  save();applyTheme();renderCompKleuren();renderMatches();renderFavorites();
+}
+
 function kiesCompLogo(naam){
   if(isViewingFriend)return;
   if(!dataLoaded){alert('Je gegevens zijn niet geladen. Probeer het opnieuw met internet.');return;}
@@ -2489,6 +2552,7 @@ function switchTab(tab){
   if(tab==='compare'){populateCompareSelects();populateCompareFilters();renderCompare();}
   if(tab==='meer')renderMeer();
   if(tab==='comps')renderCompLogos();
+  if(tab==='compkleuren')renderCompKleuren();
 }
 
 document.addEventListener('click',function(e){
